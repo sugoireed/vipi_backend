@@ -1,0 +1,53 @@
+{% extends "dashboard/base.html" %}{% load vipi %}
+{% block title %}Fleet{% endblock %}
+{% block content %}
+<div class="page-head"><div><h1>Fleet</h1><p>Pods and Talk Cases by kiosk. Returned kits go to "charging" until staff mark them ready.</p></div></div>
+<div class="grid g-3">
+  {% for k in kiosks %}
+  <div class="card kiosk">
+    <div class="top-row"><div><h3>{{ k.name }}</h3><div class="meta">{{ k.get_kind_display }} · {{ k.city }} · {{ k.opening_hours }}</div></div>
+      <span class="badge b-blue">{{ k.upcoming }} pickup{{ k.upcoming|pluralize }}</span></div>
+    <div class="stat-row">
+      <div><b style="color:#22A55A">{{ k.pods }}</b><span>pod pairs ready</span></div>
+      <div><b style="color:#22A55A">{{ k.cases }}</b><span>Talk Cases ready</span></div>
+      <div><b style="color:#7C3AED">{{ k.charging }}</b><span>charging</span></div>
+      <div><b style="color:#F5A524">{{ k.maintenance }}</b><span>repair</span></div>
+    </div>
+    {% with total=k.available|add:k.charging|add:k.maintenance %}
+    <div class="bar" title="dock use">{% if total %}
+      <span style="width:{% widthratio k.available k.capacity 100 %}%;background:#22A55A"></span>
+      <span style="width:{% widthratio k.charging k.capacity 100 %}%;background:#7C3AED"></span>
+      <span style="width:{% widthratio k.maintenance k.capacity 100 %}%;background:#F5A524"></span>{% endif %}</div>
+    <div class="meta">{{ total }} of {{ k.capacity }} dock slots in use</div>
+    {% endwith %}
+  </div>
+  {% endfor %}
+</div>
+
+<div class="card mt">
+  <h2>Devices <small>{{ page.paginator.count }} total · page {{ page.number }} of {{ page.paginator.num_pages }}</small></h2>
+  <div class="legend" style="margin-bottom:12px">{% for key, label, n, color in status_choices %}<a href="?status={{ key }}"><i style="background:{{ color }}"></i>{{ label }} · {{ n }}</a>{% endfor %}</div>
+  <form class="filters" method="get" style="margin-bottom:12px">
+    <input name="q" value="{{ f.q }}" placeholder="Serial or note">
+    <select name="status"><option value="">Any status</option>{% for key, label, n, c in status_choices %}<option value="{{ key }}" {% if f.status == key %}selected{% endif %}>{{ label }}</option>{% endfor %}</select>
+    <select name="kind"><option value="">Any type</option>{% for key, label in kind_choices %}<option value="{{ key }}" {% if f.kind == key %}selected{% endif %}>{{ label }}</option>{% endfor %}</select>
+    <select name="kiosk"><option value="">Any kiosk</option>{% for k in all_kiosks %}<option value="{{ k.code }}" {% if f.kiosk == k.code %}selected{% endif %}>{{ k.name }}</option>{% endfor %}</select>
+    <button class="btn btn-primary btn-sm">Filter</button><a class="btn btn-ghost btn-sm" href="?">Reset</a>
+  </form>
+  <div class="scroll"><table class="t">
+    <thead><tr><th>Serial</th><th>Type</th><th>Model</th><th>Status</th><th>Kiosk</th><th class="num">Cycles</th><th>Last seen</th><th></th></tr></thead>
+    <tbody>{% for d in devices %}
+      <tr><td class="mono">{{ d.serial }}</td><td>{{ d.get_kind_display }}</td><td class="muted">{{ d.model }}{% if d.firmware %} · fw {{ d.firmware }}{% endif %}</td>
+        <td>{% badge d.status d.get_status_display %}</td><td>{{ d.kiosk|default:"—" }}</td><td class="num">{{ d.battery_cycles }}</td>
+        <td class="muted">{{ d.last_seen_at|date:"d M H:i"|default:"—" }}</td>
+        <td style="text-align:right">
+          {% if d.status == 'charging' or d.status == 'maintenance' %}<form class="inline" method="post" action="{% url 'dashboard:device_action' d.serial %}">{% csrf_token %}<button class="btn btn-sm btn-primary" name="action" value="ready">Mark ready</button></form>{% endif %}
+          {% if d.status == 'available' or d.status == 'charging' %}<form class="inline" method="post" action="{% url 'dashboard:device_action' d.serial %}">{% csrf_token %}<button class="btn btn-sm btn-ghost" name="action" value="maintenance">Repair</button></form>{% endif %}
+        </td></tr>
+    {% empty %}<tr><td colspan="8" class="empty">No devices match.</td></tr>{% endfor %}</tbody>
+  </table></div>
+  {% if page.has_other_pages %}<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:14px">
+    {% if page.has_previous %}<a class="btn btn-ghost btn-sm" href="?{{ qs }}&page={{ page.previous_page_number }}">← Previous</a>{% endif %}
+    {% if page.has_next %}<a class="btn btn-primary btn-sm" href="?{{ qs }}&page={{ page.next_page_number }}">Next →</a>{% endif %}</div>{% endif %}
+</div>
+{% endblock %}

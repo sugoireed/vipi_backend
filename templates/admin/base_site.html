@@ -1,0 +1,22 @@
+{% extends "admin/base.html" %}{% load static %}
+{% block title %}{% if subtitle %}{{ subtitle }} | {% endif %}{{ title }} | Vipi! admin{% endblock %}
+{% block extrastyle %}{{ block.super }}
+<link rel="icon" href="{% static 'vipi/vipi_mark.svg' %}">
+<style>
+  /* Brand: purple primary, orange secondary, dark header as in the app. */
+  :root, html[data-theme="light"], html[data-theme="dark"] {
+    --primary: #1E1E22; --secondary: #2A2A31; --accent: #7C3AED; --primary-fg: #fff;
+    --header-color: #fff; --header-branding-color: #fff; --header-bg: #1E1E22; --header-link-color: #fff;
+    --breadcrumbs-bg: #7C3AED; --breadcrumbs-link-fg: #fff; --link-fg: #7C3AED; --link-hover-color: #FF6B00;
+    --button-bg: #7C3AED; --button-hover-bg: #5B21B6; --default-button-bg: #FF6B00; --default-button-hover-bg: #E85D00;
+    --selected-row: #F3EDFF;
+  }
+  #header { padding: 14px 32px; }
+  #site-name a, #site-name a:link, #site-name a:visited { display: flex; align-items: center; gap: 6px; font-weight: 800; color: #fff !important; }
+  #site-name img { height: 30px; }
+  .module h2, .module caption, .inline-group h2 { background: #2A2A31; }
+  .button, input[type=submit], .submit-row a.deletelink { border-radius: 999px !important; }
+  #content-main .module { border-radius: 18px; overflow: hidden; }
+</style>{% endblock %}
+{% block branding %}<div id="site-name"><a href="{% url 'admin:index' %}"><img src="{% static 'vipi/vipi_mark.svg' %}" alt="">pi<span style="color:#FF6B00">!</span>&nbsp;admin</a></div>{% endblock %}
+{% block userlinks %}<a href="/dashboard/">Ops dashboard</a> / {{ block.super }}{% endblock %}

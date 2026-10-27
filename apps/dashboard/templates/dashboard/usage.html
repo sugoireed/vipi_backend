@@ -1,0 +1,36 @@
+{% extends "dashboard/base.html" %}{% load vipi %}
+{% block title %}Translation{% endblock %}
+{% block content %}
+<div class="page-head"><div><h1>Translation engine</h1><p>Every live translation through the proxy. Audio is processed in memory and never stored.</p></div></div>
+<div class="grid g-4">{% for s in stats %}<div class="card kpi tone-{% cycle 'purple' 'orange' 'blue' 'green' %}"><div class="label">{{ s.label }}</div><div class="value">{{ s.value }}</div></div>{% endfor %}</div>
+<div class="grid g-2-1 mt">
+  <div class="card"><h2>By direction <small>per day</small></h2><div class="chart-box"><canvas id="cDir"></canvas></div></div>
+  <div class="card"><h2>What people speak</h2><div class="chart-box"><canvas id="cLang"></canvas></div></div>
+</div>
+<div class="grid g-2 mt">
+  <div class="card"><h2>Latency distribution <small>target: under 2 s</small></h2><div class="chart-box sm"><canvas id="cLat"></canvas></div></div>
+  <div class="card"><h2>Earbuds in the wild <small>30 days</small></h2>
+    <table class="t"><thead><tr><th>Earbuds</th><th class="num">Translations</th><th class="num">Errors</th></tr></thead>
+    <tbody>{% for e in earbuds %}<tr><td>{{ e.earbuds }}</td><td class="num">{{ e.n }}</td><td class="num">{{ e.errors }}</td></tr>{% empty %}<tr><td colspan="3" class="empty">No earbud data yet.</td></tr>{% endfor %}</tbody></table>
+    <div class="legend" style="margin-top:12px">{% for c in clients %}<span><i style="background:{% cycle '#7C3AED' '#FF6B00' '#3B82F6' %}"></i>{{ c.label }} · {{ c.n }}</span>{% endfor %}</div>
+  </div>
+</div>
+<div class="card mt"><h2>Recent errors & blocked requests</h2><div class="scroll"><table class="t">
+  <thead><tr><th>When</th><th>User</th><th>Status</th><th>Direction</th><th>Detail</th></tr></thead>
+  <tbody>{% for e in errors %}<tr><td class="muted">{{ e.created_at|date:"d M H:i" }}</td><td>{{ e.user|default:"—" }}</td><td>{% badge e.status e.get_status_display %}</td><td>{{ e.get_direction_display }}</td><td class="muted">{{ e.error|default:"no pass / free quota used" }}</td></tr>
+  {% empty %}<tr><td colspan="5" class="empty">No errors. 🎉</td></tr>{% endfor %}</tbody></table></div></div>
+{% endblock %}
+{% block scripts %}
+<script>
+const D = {{ charts|safe }}; const grid = { color: '#EFEFF3' };
+new Chart(cDir, { type: 'bar', data: { labels: D.labels, datasets: [
+  { label: 'Swahili/Sheng → English', data: D.to_en, backgroundColor: '#7C3AED', borderRadius: 4, stack: 's' },
+  { label: 'English → Swahili', data: D.to_sw, backgroundColor: '#FF6B00', borderRadius: 4, stack: 's' } ]},
+  options: { scales: { x: { stacked: true, grid: { display: false }, ticks: { maxTicksLimit: 8 } }, y: { stacked: true, grid } } } });
+new Chart(cLang, { type: 'doughnut', data: { labels: D.lang_labels, datasets: [{ data: D.lang_values, backgroundColor: ['#7C3AED', '#FF6B00', '#3B82F6', '#22A55A', '#9A9AA5'], borderWidth: 0 }] },
+  options: { cutout: '64%', plugins: { legend: { position: 'bottom' } } } });
+new Chart(cLat, { type: 'bar', data: { labels: D.hist_labels, datasets: [{ data: D.hist, borderRadius: 6,
+  backgroundColor: D.hist_labels.map((_, i) => i < 4 ? '#22A55A' : i < 6 ? '#F5A524' : '#E5484D') }] },
+  options: { plugins: { legend: { display: false } }, scales: { x: { grid: { display: false } }, y: { grid } } } });
+</script>
+{% endblock %}

@@ -1,0 +1,9 @@
+Django>=5.2,<6
+djangorestframework>=3.15
+dj-database-url>=2.2
+requests>=2.32
+whitenoise>=6.7
+gunicorn>=23
+segno>=1.6
+# For PostgreSQL in production:
+psycopg[binary]>=3.2

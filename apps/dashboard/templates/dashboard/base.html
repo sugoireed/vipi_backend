@@ -1,0 +1,45 @@
+{% load static vipi %}<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Dashboard{% endblock %} · Vipi! ops</title>
+  <link rel="icon" href="{% static 'vipi/vipi_mark.svg' %}">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{% static 'vipi/dashboard.css' %}">
+</head>
+<body>
+  <header class="top">
+    <a class="brand" href="{% url 'dashboard:overview' %}"><img src="{% static 'vipi/vipi_mark.svg' %}" alt=""><span>pi<span class="bang">!</span></span><small>ops</small></a>
+    <nav class="nav">
+      <a href="{% url 'dashboard:overview' %}" class="{% if active == 'overview' %}on{% endif %}">Overview</a>
+      <a href="{% url 'dashboard:rentals' %}" class="{% if active == 'rentals' %}on{% endif %}">Rentals{% if nav_overdue %}<span class="dot">{{ nav_overdue }}</span>{% endif %}</a>
+      <a href="{% url 'dashboard:fleet' %}" class="{% if active == 'fleet' %}on{% endif %}">Fleet</a>
+      <a href="{% url 'dashboard:payments' %}" class="{% if active == 'payments' %}on{% endif %}">Payments</a>
+      <a href="{% url 'dashboard:usage' %}" class="{% if active == 'usage' %}on{% endif %}">Translation</a>
+      <a href="{% url 'dashboard:customers' %}" class="{% if active == 'customers' %}on{% endif %}">Customers</a>
+      <a href="{% url 'admin:index' %}">Admin ↗</a>
+    </nav>
+    <div class="spacer"></div>
+    <div class="who"><div><div style="color:#fff;font-weight:700">{{ request.user.get_full_name|default:request.user.username }}</div>
+      <form method="post" action="{% url 'admin:logout' %}" style="margin:0">{% csrf_token %}<button style="all:unset;cursor:pointer;color:rgba(255,255,255,.55);font-size:12px">Sign out</button></form></div>
+      <div class="avatar">{{ request.user|initials }}</div></div>
+  </header>
+  <main class="sheet">
+    {% if messages %}<div class="msgs">{% for m in messages %}<div class="msg {{ m.tags }}">{{ m }}</div>{% endfor %}</div>{% endif %}
+    {% block content %}{% endblock %}
+  </main>
+  <script src="{% static 'vipi/chart.umd.min.js' %}"></script>
+  <script>
+    if (window.Chart) {
+      Chart.defaults.font.family = 'Inter, system-ui, sans-serif';
+      Chart.defaults.color = '#7A7A85';
+      Chart.defaults.plugins.legend.labels.usePointStyle = true;
+      Chart.defaults.plugins.legend.labels.boxWidth = 8;
+      Chart.defaults.maintainAspectRatio = false;
+    }
+    const kfmt = v => v >= 1000 ? (v/1000).toFixed(v >= 10000 ? 0 : 1) + 'k' : v;
+  </script>
+  {% block scripts %}{% endblock %}
+</body>
+</html>

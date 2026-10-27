@@ -1,0 +1,42 @@
+{% extends "dashboard/base.html" %}{% load vipi humanize %}
+{% block title %}Rentals{% endblock %}
+{% block content %}
+<div class="page-head"><div><h1>Rentals</h1><p>Hand kits over at pickup, check them in on return. Late days are charged at the plan's daily rate.</p></div>
+  <div class="tabs">
+    <a href="?tab=today" class="{% if tab == 'today' %}on{% endif %}">Reserved<span class="n">{{ counts.today }}</span></a>
+    <a href="?tab=active" class="{% if tab == 'active' %}on{% endif %}">Out now<span class="n">{{ counts.active }}</span></a>
+    <a href="?tab=overdue" class="{% if tab == 'overdue' %}on{% endif %}">Overdue<span class="n">{{ counts.overdue }}</span></a>
+    <a href="?tab=returned" class="{% if tab == 'returned' %}on{% endif %}">History<span class="n">{{ counts.returned }}</span></a>
+  </div></div>
+<div class="card"><div class="scroll"><table class="t">
+  <thead><tr><th>Code</th><th>Customer</th><th>Kiosk</th><th>Plan</th><th>{% if tab == 'today' %}Pickup{% elif tab == 'returned' %}Returned{% else %}Due{% endif %}</th><th>Kit</th><th>Payment</th><th>Deposit</th><th></th></tr></thead>
+  <tbody>{% for r in rentals %}
+  <tr>
+    <td class="mono">{{ r.code }}</td>
+    <td><b>{{ r.user.get_full_name|default:r.user.username }}</b><div class="muted">{{ r.user.profile.country }}{% if r.user.profile.phone %} · {{ r.user.profile.phone }}{% endif %}</div></td>
+    <td>{{ r.pickup_kiosk }}</td>
+    <td>{{ r.plan.name|default:"—" }}<div class="muted">{{ r.days }} day{{ r.days|pluralize }}</div></td>
+    <td>{% if tab == 'today' %}{{ r.reserved_for|date:"D d M, H:i" }}{% if r.flight %}<div class="muted">{{ r.flight }}</div>{% endif %}
+        {% elif tab == 'returned' %}{{ r.returned_at|date:"d M H:i"|default:"—" }}{% if r.late_fee_kes %}<div class="muted">late {{ r.late_fee_kes|kes }}</div>{% endif %}
+        {% else %}{{ r.due_at|date:"D d M, H:i" }}<div class="muted">{{ r.due_at|naturaltime }}</div>{% endif %}</td>
+    <td class="mono">{% for d in r.devices.all %}{{ d.serial }}<br>{% empty %}<span class="muted">—</span>{% endfor %}</td>
+    <td>{% if r.payment %}{% badge r.payment.status %}<div class="muted">{{ r.payment.amount_kes|kes }}</div>{% else %}—{% endif %}</td>
+    <td>{% badge r.deposit_status r.get_deposit_status_display %}</td>
+    <td style="text-align:right">
+      {% if r.status == 'reserved' %}
+        <form class="inline" method="post" action="{% url 'dashboard:rental_action' r.code %}">{% csrf_token %}
+          {% if r.payment and r.payment.status != 'paid' %}<input type="hidden" name="collect" value="cash"><button class="btn btn-sm btn-primary" name="action" value="checkout">Take cash & hand over</button>
+          {% else %}<button class="btn btn-sm btn-primary" name="action" value="checkout">Hand over kit</button>{% endif %}</form>
+        <form class="inline" method="post" action="{% url 'dashboard:rental_action' r.code %}">{% csrf_token %}<button class="btn btn-sm btn-ghost" name="action" value="cancel">Cancel</button></form>
+      {% elif r.status == 'active' %}
+        <form class="inline" method="post" action="{% url 'dashboard:rental_action' r.code %}">{% csrf_token %}
+          <select name="kiosk">{% for k in kiosks %}<option value="{{ k.code }}" {% if k.pk == r.pickup_kiosk_id %}selected{% endif %}>{{ k.name }}</option>{% endfor %}</select>
+          <input name="damage_fee" type="number" min="0" step="100" placeholder="Damage KES" style="width:110px">
+          <button class="btn btn-sm btn-accent" name="action" value="checkin">Check in</button></form>
+        <form class="inline" method="post" action="{% url 'dashboard:rental_action' r.code %}" onsubmit="return confirm('Mark this kit as lost? The deposit will be captured.')">{% csrf_token %}<button class="btn btn-sm btn-danger" name="action" value="lost">Lost</button></form>
+      {% else %}{% badge r.status r.get_status_display %}{% endif %}
+    </td>
+  </tr>
+  {% empty %}<tr><td colspan="9" class="empty">Nothing here.</td></tr>{% endfor %}</tbody>
+</table></div></div>
+{% endblock %}

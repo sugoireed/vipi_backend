@@ -1,0 +1,20 @@
+{% extends "dashboard/base.html" %}{% load vipi %}
+{% block title %}Customers{% endblock %}
+{% block content %}
+<div class="page-head"><div><h1>Customers</h1><p>{{ total }} traveller account{{ total|pluralize }} and business customers.</p></div>
+  <form class="filters" method="get"><input name="q" value="{{ q }}" placeholder="Name, email, phone, country"><button class="btn btn-primary btn-sm">Search</button></form></div>
+<div class="grid g-2-1">
+  <div class="card"><h2>Travellers</h2><div class="scroll"><table class="t">
+    <thead><tr><th>Name</th><th>Country</th><th>Phone</th><th>Pass</th><th class="num">Translations</th><th class="num">Spent</th><th>Joined</th></tr></thead>
+    <tbody>{% for u in users %}<tr><td><b>{{ u.get_full_name|default:u.username }}</b><div class="muted">{{ u.email }}</div></td><td>{{ u.profile.country|default:"—" }}</td><td class="muted">{{ u.profile.phone|default:"—" }}</td>
+      <td>{% if u.active_pass %}{% badge 'ok' 'Active' %}{% else %}<span class="muted">free</span>{% endif %}</td><td class="num">{{ u.n_trans }}</td><td class="num">{{ u.spent|kes }}</td><td class="muted">{{ u.date_joined|date:"d M Y" }}</td></tr>
+    {% empty %}<tr><td colspan="7" class="empty">No customers yet.</td></tr>{% endfor %}</tbody></table></div></div>
+  <div>
+    <div class="card"><h2>Where they're from</h2><div class="list">{% for c in countries %}<div class="row"><div class="grow title">{{ c.profile__country }}</div><b>{{ c.n }}</b></div>{% empty %}<div class="empty">—</div>{% endfor %}</div></div>
+    <div class="card mt"><h2>Business customers <a class="btn btn-ghost btn-sm" href="{% url 'admin:accounts_organisation_add' %}">+ Add</a></h2><div class="list">
+      {% for o in orgs %}<div class="row"><div class="chip-ic" style="background:rgba(124,58,237,.12);color:#7C3AED">{{ o.name|slice:":1" }}</div>
+        <div class="grow"><div class="title">{{ o.name }}</div><div class="sub">{{ o.get_kind_display }} · {{ o.seats }} seats · {{ o.members_n }} member{{ o.members_n|pluralize }}</div></div><b>{{ o.monthly_value_kes|kes }}</b></div>
+      {% empty %}<div class="empty">No business customers yet.</div>{% endfor %}</div></div>
+  </div>
+</div>
+{% endblock %}

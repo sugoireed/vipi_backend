@@ -1,0 +1,35 @@
+{% extends "dashboard/base.html" %}{% load vipi humanize %}
+{% block title %}Payments{% endblock %}
+{% block content %}
+<div class="page-head"><div><h1>Payments</h1><p>M-Pesa STK pushes confirm automatically. Cash and card can be confirmed here — the pass is granted on confirmation.</p></div></div>
+<div class="grid g-4">
+  {% for m in by_method %}<div class="card kpi tone-{% cycle 'purple' 'orange' 'blue' 'green' %}"><div class="label">{{ m.label }} · 30 days</div><div class="value">{{ m.s|kes }}</div><div class="sub">{{ m.n }} payment{{ m.n|pluralize }}</div></div>{% endfor %}
+  <div class="card kpi tone-{% if pending %}red{% else %}green{% endif %}"><div class="label">Pending now</div><div class="value">{{ pending }}</div><div class="sub">waiting for M-Pesa / cash</div></div>
+</div>
+<div class="card mt">
+  <h2>eSIM data orders <small>{{ esim_counts.ready|default:0 }} ready · {{ esim_counts.installed|default:0 }} installed · {{ esim_counts.failed|default:0 }} failed</small></h2>
+  {% if esim_failed %}<table class="t"><thead><tr><th>Order</th><th>Customer</th><th>Bundle</th><th>Payment</th><th>Error</th><th></th></tr></thead><tbody>
+  {% for o in esim_failed %}<tr><td class="mono">{{ o.reference }}</td><td>{{ o.user.get_full_name|default:o.user.username }}</td><td>{{ o.bundle.plan.name }}</td>
+    <td>{% if o.payment %}{% badge o.payment.status %} {{ o.payment.amount_kes|kes }}{% endif %}</td><td class="muted">{{ o.error|truncatechars:80 }}</td>
+    <td><a class="btn btn-sm btn-ghost" href="{% url 'admin:esim_esimorder_change' o.pk %}">Retry / refund</a></td></tr>{% endfor %}
+  </tbody></table>{% else %}<div class="empty">No eSIM orders need attention.</div>{% endif %}
+</div>
+<div class="card mt">
+  <form class="filters" method="get" style="margin-bottom:12px">
+    <input name="q" value="{{ f.q }}" placeholder="Reference, receipt, phone, email">
+    <select name="status"><option value="">Any status</option>{% for k, l in status_choices %}<option value="{{ k }}" {% if f.status == k %}selected{% endif %}>{{ l }}</option>{% endfor %}</select>
+    <select name="method"><option value="">Any method</option>{% for k, l in method_choices %}<option value="{{ k }}" {% if f.method == k %}selected{% endif %}>{{ l }}</option>{% endfor %}</select>
+    <button class="btn btn-primary btn-sm">Filter</button><a class="btn btn-ghost btn-sm" href="?">Reset</a>
+  </form>
+  <div class="scroll"><table class="t">
+    <thead><tr><th>Reference</th><th>Customer</th><th>For</th><th class="num">Amount</th><th>Method</th><th>Status</th><th>Receipt</th><th>Created</th><th></th></tr></thead>
+    <tbody>{% for p in payments %}
+      <tr><td class="mono">{{ p.reference }}</td><td>{{ p.user.get_full_name|default:p.user.username|default:"—" }}<div class="muted">{{ p.phone }}</div></td>
+        <td>{{ p.description|default:p.plan.name }}</td><td class="num"><b>{{ p.amount_kes|kes }}</b></td><td>{{ p.get_method_display }}</td>
+        <td>{% badge p.status %}{% if p.failure_reason %}<div class="muted" style="max-width:220px">{{ p.failure_reason|truncatechars:60 }}</div>{% endif %}</td>
+        <td class="mono">{{ p.provider_ref|default:"—" }}</td><td class="muted">{{ p.created_at|date:"d M H:i" }}</td>
+        <td style="text-align:right">{% if p.status == 'pending' or p.status == 'failed' %}<form class="inline" method="post" action="{% url 'dashboard:payment_action' p.reference %}" onsubmit="return confirm('Confirm {{ p.amount_kes }} KES received?')">{% csrf_token %}<button class="btn btn-sm btn-primary" name="action" value="confirm">Confirm paid</button></form>{% endif %}</td></tr>
+    {% empty %}<tr><td colspan="9" class="empty">No payments match.</td></tr>{% endfor %}</tbody>
+  </table></div>
+</div>
+{% endblock %}
