@@ -1,6 +1,8 @@
 import json
 import logging
 
+import requests
+
 from django.conf import settings
 from rest_framework import permissions, status
 from rest_framework.parsers import FormParser, MultiPartParser
@@ -67,5 +69,11 @@ class Health(APIView):
 
     def get(self, request):
         from apps.billing import mpesa
-        return Response({"ok": True, "engine": bool(settings.GEMINI_API_KEY), "model": settings.GEMINI_MODEL,
-                         "mpesa": mpesa.is_configured()})
+        vipi = None
+        if settings.VIPI_ENGINE_URL:
+            try:
+                vipi = requests.get(f"{settings.VIPI_ENGINE_URL.rstrip('/')}/health", timeout=2).json()
+            except Exception as e:  # noqa: BLE001
+                vipi = {"status": f"down ({type(e).__name__})"}
+        return Response({"ok": True, "engine": bool(settings.GEMINI_API_KEY or vipi), "model": settings.GEMINI_MODEL,
+                         "vipi_engine": vipi, "mpesa": mpesa.is_configured()})

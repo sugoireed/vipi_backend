@@ -1,0 +1,153 @@
+{% extends "contribute/base.html" %}{% load humanize %}
+{% block title %}{{ title }}{% endblock %}
+{% block content %}
+<div class="page-head"><div><h1>{{ title }}</h1><p>{{ about }} {{ waiting|intcomma }} waiting.
+  {% if trusted %}<span class="badge b-orange">Super admin: what you save counts as verified, no second check</span>{% endif %}</p></div>
+  <div class="tabs">
+    {% if task == 'transcribe' or task == 'verify' %}
+    <a href="{% url 'contribute:task' 'transcribe' %}" class="{% if task == 'transcribe' %}on{% endif %}">Transcribe</a>
+    <a href="{% url 'contribute:task' 'verify' %}" class="{% if task == 'verify' %}on{% endif %}">Check transcripts</a>
+    {% else %}
+    <a href="{% url 'contribute:task' 'meaning' %}" class="{% if task == 'meaning' %}on{% endif %}">Add meanings</a>
+    <a href="{% url 'contribute:task' 'verify_meaning' %}" class="{% if task == 'verify_meaning' %}on{% endif %}">Check meanings</a>
+    {% endif %}
+  </div></div>
+
+<div class="tabs" style="margin-bottom:16px" aria-label="Which clips">
+  {% for key, label, n in sources %}<a href="?source={{ key }}" class="{% if source == key %}on{% endif %}">{{ label }}<span class="n">{{ n|intcomma }}</span></a>{% endfor %}
+</div>
+
+<div class="grid g-2-1">
+  <div class="card">
+  {% if item %}
+    <h2>{{ item.episode|default:item.source }} <span class="muted" style="font-weight:500">· {% if item.source == 'sheng_talk' %}Sheng Talk{% else %}Radio{% endif %} · {{ item.duration|floatformat:1 }} s</span></h2>
+    {% if audio %}
+      <audio id="player" controls autoplay src="{{ audio }}" style="width:100%;margin:8px 0 4px"></audio>
+      <div class="inline" style="gap:6px;margin-bottom:6px">
+        <button type="button" class="btn btn-ghost btn-sm" data-rate="0.75">0.75×</button>
+        <button type="button" class="btn btn-ghost btn-sm" data-rate="1">1×</button>
+        <button type="button" class="btn btn-ghost btn-sm" id="replay">↺ Replay</button>
+        <button type="button" class="btn btn-ghost btn-sm" id="repeat" aria-pressed="false">🔁 Repeat</button>
+      </div>
+    {% else %}
+      <div class="msg error">Audio file not found: <span class="mono">{{ item.audio }}</span></div>
+    {% endif %}
+
+    <form method="post" action="{% url 'contribute:item' task item.pk %}" id="work">{% csrf_token %}
+    {% if task == 'transcribe' or task == 'verify' %}
+      {% if again %}<p style="margin:10px 0 0"><span class="badge b-orange">You already saved this one{% if again.transcript_status == 'unusable' %} as unusable{% endif %}. Change it, or Skip to carry on.</span></p>{% endif %}
+      {% if task == 'transcribe' and item.draft %}<p class="muted" style="margin:10px 0 0">Riba heard: <i>{{ item.draft }}</i></p>{% endif %}
+      <label class="lbl" for="text">{% if task == 'verify' %}Is this exactly what is said? Fix it if not.{% else %}What is said, word for word{% endif %}</label>
+      <textarea class="field" name="text" id="text" rows="4" autofocus spellcheck="false">{% if task == 'verify' %}{{ item.text }}{% elif again %}{{ item.text|default:item.draft }}{% else %}{{ item.draft }}{% endif %}</textarea>
+      <div class="actions">
+        {% if back %}<a class="btn btn-ghost" href="{% url 'contribute:item' task back.pk %}">← Back</a>{% endif %}
+        <button class="btn btn-ghost" name="action" value="skip">Skip</button>
+        <button class="btn btn-danger" name="action" value="unusable">Unusable</button>
+        <button class="btn btn-primary" name="action" value="save" id="primary">{% if task == 'verify' %}<span id="primary-label">Approve</span>{% else %}Save &amp; next{% endif %} <span style="opacity:.6">⌘↵</span></button>
+      </div>
+    {% else %}
+      {% if again %}<p style="margin:10px 0 0"><span class="badge b-orange">You already saved this one. Change it, or Skip to carry on.</span></p>{% endif %}
+      <label class="lbl">What is said</label>
+      <div class="quote">{{ item.text }}</div>
+      <label class="lbl" for="en">Meaning in English</label>
+      <textarea class="field" name="en" id="en" rows="2" autofocus>{% if item.meaning_en %}{{ item.meaning_en }}{% else %}{{ suggest.en.0.text }}{% endif %}</textarea>
+      <div class="field-tools"><button type="button" class="btn btn-ghost btn-sm" data-translate="en" data-into="sw">Translate to Swahili ↓ <span class="muted">Mufti</span></button></div>
+      {% include "contribute/_suggestions.html" with options=suggest.en target="en" %}
+      <label class="lbl" for="sw">Meaning in standard Swahili</label>
+      <textarea class="field" name="sw" id="sw" rows="2">{% if item.meaning_sw %}{{ item.meaning_sw }}{% else %}{{ suggest.sw.0.text }}{% endif %}</textarea>
+      <div class="field-tools"><button type="button" class="btn btn-ghost btn-sm" data-translate="sw" data-into="en">Translate to English ↑ <span class="muted">Mufti</span></button></div>
+      {% include "contribute/_suggestions.html" with options=suggest.sw target="sw" %}
+      <div class="actions">
+        {% if back %}<a class="btn btn-ghost" href="{% url 'contribute:item' task back.pk %}">← Back</a>{% endif %}
+        <button class="btn btn-ghost" name="action" value="skip">Skip</button>
+        {% if task == 'verify_meaning' %}<button class="btn btn-danger" name="action" value="reject">Wrong, redo it</button>{% endif %}
+        <button class="btn btn-primary" name="action" value="save" id="primary">{% if task == 'verify_meaning' %}<span id="primary-label">Approve</span>{% else %}Save &amp; next{% endif %} <span style="opacity:.6">⌘↵</span></button>
+      </div>
+    {% endif %}
+    </form>
+  {% else %}
+    <div class="empty">Nothing waiting for you {% if source_label %}in {{ source_label }} {% endif %}right now. 🎉<br>
+      {% if source %}<a href="?source=">Show all clips</a> · {% endif %}<a href="{% url 'contribute:home' %}">Pick another task</a>
+      {% if back %}<br><a class="btn btn-ghost" style="margin-top:12px" href="{% url 'contribute:item' task back.pk %}">← Back</a>{% endif %}</div>
+  {% endif %}
+  </div>
+
+  <div class="card"><h2>How to</h2><div class="list">
+  {% if task == 'transcribe' or task == 'verify' %}
+    <div class="row"><div class="grow sub">Write exactly what is said, in the language it's said in: Sheng, Swahili, English or a mix. Don't translate, don't fix grammar.</div></div>
+    <div class="row"><div class="grow sub">Use the usual Sheng spelling (<i>msee, mathree, doh</i>). Capitals and punctuation don't matter.</div></div>
+    <div class="row"><div class="grow sub">Can't make out a word? Type <b>[?]</b> in its place.</div></div>
+    <div class="row"><div class="grow sub"><b>Unusable</b>: music or singing, ads, noise, no clear speech, or people talking over each other.</div></div>
+    {% if task == 'verify' %}<div class="row"><div class="grow sub">If you change anything it becomes your fix, and someone else checks it.</div></div>{% endif %}
+  {% else %}
+    <div class="row"><div class="grow sub">Translate the meaning, not word by word: what would a Nairobi speaker mean by it?</div></div>
+    <div class="row"><div class="grow sub">Standard Swahili means textbook Kiswahili (<i>rafiki</i>, not <i>msee</i>).</div></div>
+    <div class="row"><div class="grow sub">Keep names, places and slogans as they are.</div></div>
+  {% endif %}
+    <div class="row"><div class="grow sub"><b>⌘↵</b> save · <b>⌃Space</b> play/pause · <b>⌃R</b> replay</div></div>
+  </div></div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+  const player = document.getElementById('player'), form = document.getElementById('work');
+  if (player) {
+    player.play().catch(() => {});
+    document.querySelectorAll('[data-rate]').forEach(b => b.onclick = () => { player.playbackRate = +b.dataset.rate; });
+    document.getElementById('replay').onclick = () => { player.currentTime = 0; player.play(); };
+    // Repeat stays on from clip to clip until turned off
+    const repeat = document.getElementById('repeat');
+    const setRepeat = on => {
+      player.loop = on; repeat.setAttribute('aria-pressed', on);
+      repeat.classList.toggle('btn-primary', on); repeat.classList.toggle('btn-ghost', !on);
+      try { localStorage.setItem('contribute.repeat', on ? '1' : ''); } catch (e) {}
+    };
+    try { setRepeat(localStorage.getItem('contribute.repeat') === '1'); } catch (e) {}
+    repeat.onclick = () => setRepeat(!player.loop);
+  }
+  // "Translate to …": Mufti turns the box you just edited into the other language and fills the other box
+  document.querySelectorAll('[data-translate]').forEach(b => b.onclick = async () => {
+    const from = document.getElementById(b.dataset.translate), into = document.getElementById(b.dataset.into);
+    if (!from.value.trim()) { from.focus(); return; }
+    const label = b.innerHTML;
+    b.disabled = true; b.textContent = 'Translating…';
+    try {
+      const body = new FormData();
+      body.append('text', from.value); body.append('source', b.dataset.translate);
+      body.append('csrfmiddlewaretoken', form.querySelector('[name=csrfmiddlewaretoken]').value);
+      const res = await fetch('{% url "contribute:translate" %}', {method: 'POST', body});
+      const out = await res.json();
+      if (!res.ok) throw new Error(out.error);
+      into.value = out.translation; into.focus(); into.dispatchEvent(new Event('input', {bubbles: true}));
+    } catch (e) {
+      alert(e.message || "Mufti couldn't translate that right now.");
+    } finally {
+      b.disabled = false; b.innerHTML = label;
+    }
+  });
+  document.querySelectorAll('.suggest .chip').forEach(c => c.onclick = () => {
+    const box = document.getElementById(c.dataset.target);
+    box.value = c.dataset.text; box.focus(); box.dispatchEvent(new Event('input', {bubbles: true}));
+  });
+  const first = form && form.querySelector('textarea');
+  if (first) { first.focus(); first.setSelectionRange(first.value.length, first.value.length); }
+  // when checking someone's work, the button says what will happen: unchanged = approve, edited = your fix
+  const label = document.getElementById('primary-label');
+  if (label) {
+    const fields = [...form.querySelectorAll('textarea')], original = fields.map(f => f.value.trim().replace(/\s+/g, ' '));
+    form.addEventListener('input', () => {
+      const changed = fields.some((f, i) => f.value.trim().replace(/\s+/g, ' ') !== original[i]);
+      label.textContent = changed ? 'Save my fix' : 'Approve';
+    });
+  }
+  document.addEventListener('keydown', e => {
+    if (form && (e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+      e.preventDefault(); form.requestSubmit(document.getElementById('primary'));
+    } else if (player && e.ctrlKey && e.code === 'Space') {
+      e.preventDefault(); player.paused ? player.play() : player.pause();
+    } else if (player && e.ctrlKey && e.key === 'r') {
+      e.preventDefault(); player.currentTime = 0; player.play();
+    }
+  });
+</script>
+{% endblock %}

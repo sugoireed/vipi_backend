@@ -5,5 +5,7 @@ requests>=2.32
 whitenoise>=6.7
 gunicorn>=23
 segno>=1.6
+# MySQL driver (pure Python, wired up in config/settings.py)
+PyMySQL>=1.1
 # For PostgreSQL in production:
 psycopg[binary]>=3.2

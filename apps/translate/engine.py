@@ -1,4 +1,10 @@
-"""Sauti Engine v0: Gemini audio → structured translation (same prompts as the app)."""
+"""Live translation engines.
+
+1. Vipi engine (engine/ in this repo, separate process): Riba speech recognition, then Mufti (Swahili<->English)
+   or Risto (Sheng) translation. Used when VIPI_ENGINE_URL is set.
+2. Sauti Engine v0: Gemini audio → structured translation (same prompts as the app). The fallback whenever
+   the Vipi engine is not configured, down, or fails.
+"""
 import base64
 import json
 import logging
@@ -80,6 +86,40 @@ def build_prompt(direction: str, glossary: list[dict] | None) -> str:
 
 
 def translate_clip(audio: bytes, direction: str, glossary=None, mime="audio/wav") -> tuple[dict, int, str]:
+    """Returns (result_json, latency_ms, model). Vipi engine first when configured, Gemini as fallback."""
+    if settings.VIPI_ENGINE_URL:
+        try:
+            return vipi_engine_clip(audio, direction, glossary, mime)
+        except EngineError as e:
+            log.warning("Vipi engine failed, falling back to Gemini: %s", e)
+    return gemini_clip(audio, direction, glossary, mime)
+
+
+def vipi_engine_clip(audio: bytes, direction: str, glossary=None, mime="audio/wav") -> tuple[dict, int, str]:
+    """Riba + Mufti/Risto via the Vipi engine's /v1/speech (returns the same fields as the Gemini engine)."""
+    started = time.monotonic()
+    try:
+        res = requests.post(
+            f"{settings.VIPI_ENGINE_URL.rstrip('/')}/v1/speech",
+            files={"audio": ("clip.wav", audio, mime)},
+            data={"direction": direction, "glossary": json.dumps(glossary or [])},
+            headers={"X-API-Key": settings.VIPI_ENGINE_KEY} if settings.VIPI_ENGINE_KEY else {},
+            timeout=settings.VIPI_ENGINE_TIMEOUT,
+        )
+    except requests.RequestException as e:
+        raise EngineError(f"Vipi engine unreachable: {e}") from e
+    latency = int((time.monotonic() - started) * 1000)
+    if res.status_code != 200:
+        raise EngineError(f"Vipi engine {res.status_code}: {res.text[:200]}")
+    out = res.json()
+    out.setdefault("sheng_terms", [])
+    info = out.get("engine", {})
+    # e.g. "vipi:riba+risto/mufti" (english provider / swahili provider) for the dashboard's model column.
+    providers = "/".join(dict.fromkeys(info.get("providers", {}).values())) or "none"
+    return out, latency, f"vipi:riba+{providers}"[:40]
+
+
+def gemini_clip(audio: bytes, direction: str, glossary=None, mime="audio/wav") -> tuple[dict, int, str]:
     """Returns (result_json, latency_ms, model)."""
     key = settings.GEMINI_API_KEY
     model = settings.GEMINI_MODEL

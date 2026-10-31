@@ -1,0 +1,13 @@
+{% extends "dashboard/auth/base_auth.html" %}{% load vipi %}
+{% block title %}Waiting for approval{% endblock %}
+{% block content %}
+<div class="auth-state"><span class="state-ic">{% icon 'shield' 30 %}</span></div>
+<div class="auth-head center"><span class="eyebrow">Almost there</span><h1>Waiting for approval</h1>
+  <p>You're signed in as <b>{{ request.user.email|default:request.user.username }}</b>, but this account doesn't have dashboard access yet. An admin will turn it on. Ask your team lead if it's urgent.</p></div>
+<div class="auth-steps">
+  <div class="on"><i>{% icon 'check' 14 %}</i>Account created</div>
+  <div><i>2</i>Admin approves access</div>
+  <div><i>3</i>Sign in and get going</div>
+</div>
+<form method="post" action="{% url 'dashboard:logout' %}">{% csrf_token %}<button class="btn btn-ghost btn-block">Sign out</button></form>
+{% endblock %}

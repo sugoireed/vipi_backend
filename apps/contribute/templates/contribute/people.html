@@ -1,0 +1,21 @@
+{% extends "contribute/base.html" %}{% load humanize %}
+{% block title %}People{% endblock %}
+{% block content %}
+<div class="page-head"><div><h1>Contributors</h1><p>Invite people to transcribe, translate and check. They only see the contribute pages, never ops.</p></div></div>
+<div class="grid g-2-1">
+  <div class="card"><h2>Who's contributing</h2><div class="scroll"><table class="t">
+    <thead><tr><th>Name</th><th class="num">Done</th><th class="num">Checked by others</th><th class="num">Approved</th><th>Last active</th></tr></thead>
+    <tbody>{% for u in users %}<tr><td><b>{{ u.get_full_name|default:u.username }}</b><div class="muted">{{ u.email }}{% if u.is_staff %} · staff{% endif %}</div></td>
+      <td class="num">{{ u.n_done|intcomma }}</td><td class="num">{{ u.n_checked|intcomma }}</td>
+      <td class="num">{% if u.rate is not None %}{{ u.rate }}%{% else %}—{% endif %}</td><td class="muted">{{ u.last|naturaltime|default:"never" }}</td></tr>
+    {% empty %}<tr><td colspan="5" class="empty">No contributors yet. Invite someone →</td></tr>{% endfor %}</tbody></table></div></div>
+  <div class="card"><h2>Invite</h2>
+    <form method="post">{% csrf_token %}
+      <label class="lbl" for="name">Name</label><input class="field" name="name" id="name" required>
+      <label class="lbl" for="email">Email</label><input class="field" type="email" name="email" id="email" required>
+      <div class="actions"><button class="btn btn-primary">Create invite link</button></div>
+    </form>
+    <p class="muted" style="margin-top:12px">You'll get a link to send them (WhatsApp, email…). It lets them set a password once.</p>
+  </div>
+</div>
+{% endblock %}

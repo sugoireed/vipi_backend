@@ -1,0 +1,15 @@
+{% extends "dashboard/auth/base_auth.html" %}{% load vipi %}
+{% block title %}Set a new password{% endblock %}
+{% block content %}
+{% if validlink %}
+<div class="auth-head"><span class="eyebrow">Reset password</span><h1>Set a new password</h1><p>Choose a password you don't use anywhere else.</p></div>
+<form method="post" novalidate>{% csrf_token %}
+  {% include "dashboard/auth/_fields.html" %}
+  <button class="btn btn-primary btn-block">Save password {% icon 'arrow' 16 %}</button>
+</form>
+{% else %}
+<div class="auth-state"><span class="state-ic warn">{% icon 'clock' 30 %}</span></div>
+<div class="auth-head center"><span class="eyebrow">Link expired</span><h1>This link no longer works</h1><p>Reset links work once and expire after a few days. Ask for a new one.</p></div>
+<a class="btn btn-primary btn-block" href="{% url 'dashboard:password_reset' %}">Send a new link</a>
+{% endif %}
+{% endblock %}

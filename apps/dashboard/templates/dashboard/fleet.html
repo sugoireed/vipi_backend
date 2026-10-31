@@ -2,16 +2,53 @@
 {% block title %}Fleet{% endblock %}
 {% block content %}
 <div class="page-head"><div><h1>Fleet</h1><p>Pods and Talk Cases by kiosk. Returned kits go to "charging" until staff mark them ready.</p></div></div>
+
 <div class="grid g-3">
+  <div class="card hw-card">
+    <div class="hw-pic pods" aria-hidden="true">{% include "dashboard/hw/pods.svg" %}{% include "dashboard/hw/pods.svg" %}</div>
+    <div><div class="eyebrow">VP-1 · Wearable</div><h3>vipi! pods</h3></div>
+    <div class="big">{{ hw.pods.available|default:0 }}<small>pairs ready</small></div>
+    <div class="stat-row">
+      <div><b style="color:var(--orange)">{{ hw.pods.rented|default:0 }}</b><span>out</span></div>
+      <div><b style="color:var(--blue)">{{ hw.pods.reserved|default:0 }}</b><span>reserved</span></div>
+      <div><b style="color:var(--purple)">{{ hw.pods.charging|default:0 }}</b><span>charging</span></div>
+      <div><b style="color:var(--amber)">{{ hw.pods.maintenance|default:0 }}</b><span>repair</span></div>
+    </div>
+  </div>
+  <div class="card hw-card">
+    <div class="hw-pic case" aria-hidden="true">{% include "dashboard/hw/case.svg" %}</div>
+    <div><div class="eyebrow">VT-1 · Handheld</div><h3>vipi! talk case</h3></div>
+    <div class="big">{{ hw.cases.available|default:0 }}<small>cases ready</small></div>
+    <div class="stat-row">
+      <div><b style="color:var(--orange)">{{ hw.cases.rented|default:0 }}</b><span>out</span></div>
+      <div><b style="color:var(--blue)">{{ hw.cases.reserved|default:0 }}</b><span>reserved</span></div>
+      <div><b style="color:var(--purple)">{{ hw.cases.charging|default:0 }}</b><span>charging</span></div>
+      <div><b style="color:var(--amber)">{{ hw.cases.maintenance|default:0 }}</b><span>repair</span></div>
+    </div>
+  </div>
+  <div class="card hw-card">
+    <div class="hw-pic kit" aria-hidden="true">{% include "dashboard/hw/pouch.svg" %}{% include "dashboard/hw/bracelet.svg" %}</div>
+    <div><div class="eyebrow">Rental bundle · pouch + bracelet</div><h3>vipi! tourist kit</h3></div>
+    <div class="big">{{ hw.kits_ready }}<small>kits ready · {{ hw.kits_with_case }} with a Talk Case</small></div>
+    <div class="stat-row">
+      <div><b style="color:var(--orange)">{{ hw.kits_out }}</b><span>out now</span></div>
+      <div><b style="color:var(--blue)">{{ hw.kits_reserved }}</b><span>reserved</span></div>
+      <div><b style="color:{% if hw.kits_overdue %}var(--red){% else %}var(--green){% endif %}">{{ hw.kits_overdue }}</b><span>overdue</span></div>
+      <div><b style="color:var(--purple)">{{ kiosks|length }}</b><span>kiosks</span></div>
+    </div>
+  </div>
+</div>
+
+<div class="grid g-3 mt">
   {% for k in kiosks %}
   <div class="card kiosk">
     <div class="top-row"><div><h3>{{ k.name }}</h3><div class="meta">{{ k.get_kind_display }} · {{ k.city }} · {{ k.opening_hours }}</div></div>
       <span class="badge b-blue">{{ k.upcoming }} pickup{{ k.upcoming|pluralize }}</span></div>
     <div class="stat-row">
-      <div><b style="color:#22A55A">{{ k.pods }}</b><span>pod pairs ready</span></div>
-      <div><b style="color:#22A55A">{{ k.cases }}</b><span>Talk Cases ready</span></div>
-      <div><b style="color:#7C3AED">{{ k.charging }}</b><span>charging</span></div>
-      <div><b style="color:#F5A524">{{ k.maintenance }}</b><span>repair</span></div>
+      <div><b style="color:var(--green)">{{ k.pods }}</b><span>pod pairs ready</span></div>
+      <div><b style="color:var(--green)">{{ k.cases }}</b><span>Talk Cases ready</span></div>
+      <div><b style="color:var(--purple)">{{ k.charging }}</b><span>charging</span></div>
+      <div><b style="color:var(--amber)">{{ k.maintenance }}</b><span>repair</span></div>
     </div>
     {% with total=k.available|add:k.charging|add:k.maintenance %}
     <div class="bar" title="dock use">{% if total %}

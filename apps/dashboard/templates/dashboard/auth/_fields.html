@@ -1,0 +1,9 @@
+{% load vipi %}{% if form.non_field_errors %}<div class="form-error" role="alert">{% for e in form.non_field_errors %}{{ e }} {% endfor %}</div>{% endif %}
+{% for f in form %}
+<div class="fld{% if f.errors %} bad{% endif %}">
+  <label for="{{ f.id_for_label }}">{{ f.label }}</label>
+  <span class="fld-in">{% if 'password' in f.name %}{% icon 'lock' 18 %}{% elif f.name == 'name' %}{% icon 'user' 18 %}{% elif f.name == 'phone' %}{% icon 'phone' 18 %}{% else %}{% icon 'mail' 18 %}{% endif %}{{ f }}</span>
+  {% for e in f.errors %}<small class="fld-err">{{ e }}</small>{% endfor %}
+  {% if f.help_text and f.name == 'new_password1' %}<small class="fld-help">At least 8 characters, not too common, not all numbers.</small>{% endif %}
+</div>
+{% endfor %}

@@ -1,0 +1,36 @@
+{% load static vipi %}<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Sign in{% endblock %} · {{ market.brand }} ops</title>
+  <link rel="icon" href="{% static 'vipi/vipi_mark.svg' %}">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{% static 'vipi/dashboard.css' %}">
+</head>
+<body class="auth">
+<div class="auth-shell">
+  <section class="auth-brand" aria-hidden="true">
+    <a class="side-brand light" href="{% url 'dashboard:login' %}"><img src="{% static 'vipi/vipi_mark.svg' %}" alt=""><span>pi<span class="bang">!</span></span><em class="brand-market">{{ market.qualifier }}</em><small>ops</small></a>
+    <div class="auth-art">
+      <span class="auth-orbit"></span>
+      {% include "dashboard/hw/pouch.svg" %}{% include "dashboard/hw/case.svg" %}{% include "dashboard/hw/pods.svg" %}{% include "dashboard/hw/bracelet.svg" %}
+    </div>
+    <div class="auth-pitch">
+      <div class="eyebrow">Karibu · the ops dashboard</div>
+      <h2>Kits, kiosks, passes and the Sauti engine, in one place.</h2>
+      <div class="auth-chips"><span>Rentals &amp; handovers</span><span>Fleet</span><span>M-Pesa</span><span>Translation</span></div>
+    </div>
+  </section>
+  <main class="auth-main">
+    <a class="auth-back" href="{% site_url %}">← Back to {{ market.domain }}</a>
+    <div class="auth-card">
+      {% if messages %}<div class="msgs">{% for m in messages %}<div class="msg {{ m.tags }}">{{ m }}</div>{% endfor %}</div>{% endif %}
+      {% block content %}{% endblock %}
+    </div>
+    <p class="auth-foot">{{ market.brand }} · Made in {{ market.city }} · <a href="{% site_url %}">Website</a> · <a href="{% url 'contribute:login' %}">Contributor portal</a></p>
+  </main>
+</div>
+</body>
+</html>

@@ -1,0 +1,7 @@
+{% extends "dashboard/auth/base_auth.html" %}{% load vipi %}
+{% block title %}Password saved{% endblock %}
+{% block content %}
+<div class="auth-state"><span class="state-ic ok">{% icon 'check' 30 %}</span></div>
+<div class="auth-head center"><span class="eyebrow">All set</span><h1>Password saved</h1><p>You can sign in with your new password now.</p></div>
+<a class="btn btn-primary btn-block" href="{% url 'dashboard:login' %}">Sign in {% icon 'arrow' 16 %}</a>
+{% endblock %}

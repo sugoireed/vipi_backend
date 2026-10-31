@@ -1,79 +1,137 @@
 {% extends "dashboard/base.html" %}{% load vipi humanize %}
 {% block title %}Overview{% endblock %}
 {% block content %}
-<div class="hero">
-  <div class="rings"></div>
-  <h2>Habari, {{ request.user.first_name|default:request.user.username }} 👋</h2>
-  <p>Live view of passes, the rental fleet and the Sauti translation engine. {{ upcoming|length }} pickup{{ upcoming|length|pluralize }} in the next 48 h{% if overdue %} · <b>{{ overdue|length }} overdue</b> kit{{ overdue|length|pluralize }} to chase{% endif %}.</p>
-</div>
+<div class="ov">
+  <div class="ov-main">
 
-<div class="grid g-6 mt">
-  {% for k in kpis %}
-  <div class="card kpi tone-{{ k.tone }}">
-    <div class="ic">{% icon k.icon %}</div>
-    <div><div class="label">{{ k.label }}</div><div class="value">{{ k.value }}</div><div class="sub">{{ k.sub }}</div></div>
-  </div>
-  {% endfor %}
-</div>
+    <section class="welcome">
+      <div class="welcome-art" aria-hidden="true">{% include "dashboard/hw/pouch.svg" %}{% include "dashboard/hw/case.svg" %}{% include "dashboard/hw/pods.svg" %}{% include "dashboard/hw/bracelet.svg" %}</div>
+      <div class="welcome-copy">
+        <div class="eyebrow">Karibu Kenya · today</div>
+        <h1>{{ upcoming|length }} pickup{{ upcoming|length|pluralize }} booked in the next 48 hours</h1>
+        <p>Live view of passes, the rental fleet and the Sauti translation engine.{% if overdue %} <b>{{ overdue|length }} overdue</b> kit{{ overdue|length|pluralize }} to chase.{% else %} Every kit out is on time.{% endif %}</p>
+        <div class="welcome-ctas">
+          <a class="btn btn-primary" href="{% url 'dashboard:rentals' %}">Open handovers {% icon 'arrow' 16 %}</a>
+          <a class="btn btn-ghost" href="{% url 'dashboard:fleet' %}">Check the fleet</a>
+        </div>
+      </div>
+    </section>
 
-<div class="grid g-2-1 mt">
-  <div class="card"><h2>Translations per day <small>last 30 days</small></h2><div class="chart-box"><canvas id="cTrans"></canvas></div></div>
-  <div class="card"><h2>Fleet right now</h2><div class="chart-box"><canvas id="cFleet"></canvas></div></div>
-</div>
-
-<div class="grid g-2-1 mt">
-  <div class="card"><h2>Revenue per day <small>KES · paid</small></h2><div class="chart-box sm"><canvas id="cRev"></canvas></div></div>
-  <div class="card"><h2>Revenue mix <small>30 days</small></h2><div class="chart-box sm"><canvas id="cMix"></canvas></div></div>
-</div>
-
-<div class="grid g-3 mt">
-  <div class="card">
-    <h2>Pickups · next 48 h <a class="btn btn-ghost btn-sm" href="{% url 'dashboard:rentals' %}">All</a></h2>
-    <div class="list">
-      {% for r in upcoming %}
-      <div class="row"><div class="chip-ic" style="background:rgba(59,130,246,.12);color:#3B82F6">{% icon 'pin' 18 %}</div>
-        <div class="grow"><div class="title">{{ r.user.get_full_name|default:r.user.username }}</div>
-          <div class="sub">{{ r.pickup_kiosk }} · {{ r.reserved_for|date:"D H:i" }}{% if r.flight %} · {{ r.flight }}{% endif %}</div></div>
-        {% if r.payment %}{% badge r.payment.status %}{% endif %}</div>
-      {% empty %}<div class="empty">No pickups scheduled.</div>{% endfor %}
+    <div class="sec-title"><h2>At a glance</h2><span>rings show progress · hover a ring for what it measures</span></div>
+    <div class="grid g-3">
+      {% for k in kpis %}
+      <div class="card kpi-card tone-{{ k.tone }}">
+        <div class="kpi-top">
+          <span class="kpi-ic">{% icon k.icon 22 %}</span>
+          <svg class="ring" viewBox="0 0 44 44" role="img" aria-label="{{ k.ring.title }}: {{ k.ring.label }}"><title>{{ k.ring.title }}</title>
+            <circle cx="22" cy="22" r="18" class="ring-bg"/>
+            <circle cx="22" cy="22" r="18" class="ring-fg" stroke-dasharray="{{ k.ring.dash }} 113.1" transform="rotate(-90 22 22)"/>
+            <text x="22" y="25">{{ k.ring.label }}</text></svg>
+        </div>
+        <div class="label">{{ k.label }}</div>
+        <div class="value">{{ k.value }}</div>
+        <div class="sub">{{ k.sub }}</div>
+      </div>
+      {% endfor %}
     </div>
-  </div>
-  <div class="card">
-    <h2>Overdue kits <a class="btn btn-ghost btn-sm" href="{% url 'dashboard:rentals' %}?tab=overdue">All</a></h2>
-    <div class="list">
-      {% for r in overdue %}
-      <div class="row"><div class="chip-ic" style="background:rgba(229,72,77,.1);color:#E5484D">{% icon 'clock' 18 %}</div>
-        <div class="grow"><div class="title">{{ r.user.get_full_name|default:r.user.username }}</div>
-          <div class="sub">{{ r.code }} · due {{ r.due_at|naturaltime }} · {{ r.user.profile.phone|default:"no phone" }}</div></div></div>
-      {% empty %}<div class="empty">Every kit is on time. 🎉</div>{% endfor %}
+
+    <div class="sec-title"><h2>Translation &amp; hardware</h2><span>last 30 days · kits right now</span></div>
+    <div class="ov-split">
+      <div class="card"><h2>Translations per day <small>last 30 days</small></h2><div class="chart-box"><canvas id="cTrans"></canvas></div></div>
+      <div class="tiles">
+        <a class="tile-ill t-lav" href="{% url 'dashboard:fleet' %}?kind=pod_pair&amp;status=available">
+          <div><b>{{ hw.pods.available|default:0 }}</b><span>Pod pairs ready</span></div>
+          <div class="tile-art pods" aria-hidden="true"><i class="pedestal"></i>{% include "dashboard/hw/pods.svg" %}</div>
+        </a>
+        <a class="tile-ill t-sun" href="{% url 'dashboard:fleet' %}?kind=talk_case&amp;status=available">
+          <div><b>{{ hw.cases.available|default:0 }}</b><span>Talk Cases ready</span></div>
+          <div class="tile-art case" aria-hidden="true"><i class="pedestal"></i>{% include "dashboard/hw/case.svg" %}</div>
+        </a>
+        <a class="tile-ill t-pink" href="{% url 'dashboard:rentals' %}?tab=active">
+          <div><b>{{ hw.kits_out }}</b><span>Tourist kits out</span></div>
+          <div class="tile-art kit" aria-hidden="true"><i class="pedestal"></i>{% include "dashboard/hw/pouch.svg" %}</div>
+        </a>
+      </div>
     </div>
-  </div>
-  <div class="card">
-    <h2>Latest payments <a class="btn btn-ghost btn-sm" href="{% url 'dashboard:payments' %}">All</a></h2>
-    <div class="list">
+
+    <div class="ov-split rev">
+      <div class="gauge-card">
+        <div class="gauge-top"><span>Fleet utilisation</span>{% icon 'pods' 20 %}</div>
+        <svg class="gauge" viewBox="0 0 200 118" role="img" aria-label="{{ utilisation }}% of the fleet is rented out">
+          <defs><linearGradient id="gaugeGrad" x1="0" x2="1"><stop offset="0" stop-color="#7CF29A"/><stop offset=".55" stop-color="#F7E35B"/><stop offset="1" stop-color="#FFFFFF"/></linearGradient></defs>
+          <path d="M20 104 A80 80 0 0 1 180 104" fill="none" stroke="rgba(255,255,255,.18)" stroke-width="18" stroke-linecap="round"/>
+          <path d="M20 104 A80 80 0 0 1 180 104" fill="none" stroke="url(#gaugeGrad)" stroke-width="18" stroke-linecap="round" stroke-dasharray="{{ gauge_dash }} 251.3"/>
+          <text x="100" y="98" text-anchor="middle">{{ utilisation }}%</text>
+        </svg>
+        <div class="gauge-foot"><span>Kits out now</span><b>{{ out }}</b><small>of {{ in_service }} devices in service</small></div>
+      </div>
+      <div class="card"><h2>Revenue per day <small>KES · paid</small></h2><div class="chart-box sm"><canvas id="cRev"></canvas></div></div>
+    </div>
+
+    <div class="grid g-2 mt">
+      <div class="card"><h2>Fleet right now <small>by status</small></h2><div class="chart-box sm"><canvas id="cFleet"></canvas></div></div>
+      <div class="card"><h2>Revenue mix <small>30 days</small></h2><div class="chart-box sm"><canvas id="cMix"></canvas></div></div>
+    </div>
+
+    <div class="sec-title"><h2>Latest payments</h2><a class="btn btn-ghost btn-sm" href="{% url 'dashboard:payments' %}">All payments</a></div>
+    <div class="history">
       {% for p in recent_payments %}
-      <div class="row"><div class="chip-ic" style="background:rgba(124,58,237,.12);color:#7C3AED">{% icon 'cash' 18 %}</div>
-        <div class="grow"><div class="title">{{ p.amount_kes|kes }}</div>
-          <div class="sub">{{ p.plan.name|default:p.description }} · {{ p.get_method_display }} · {{ p.created_at|naturaltime }}</div></div>
-        {% badge p.status %}</div>
-      {% empty %}<div class="empty">No payments yet.</div>{% endfor %}
+      <div class="hrow">
+        <span class="hav">{% if p.user %}{{ p.user|initials }}{% else %}–{% endif %}</span>
+        <span class="hname"><b>{{ p.user.get_full_name|default:p.user.username|default:"Walk-in" }}</b><small>{{ p.phone|default:"" }}</small></span>
+        <span class="hmuted">{{ p.created_at|date:"D H:i" }}</span>
+        <span class="hamount">{{ p.amount_kes|kes }}</span>
+        <span class="hmuted hplan">{{ p.plan.name|default:p.description }}</span>
+        <span class="hmuted hmethod">{{ p.get_method_display }}</span>
+        <span class="hstatus">{% badge p.status %}</span>
+      </div>
+      {% empty %}<div class="card empty">No payments yet.</div>{% endfor %}
     </div>
   </div>
+
+  <aside class="ov-rail" aria-label="Handovers and follow-ups">
+    <div class="rail-head"><div><span>Handovers</span><b>Next 48 hours</b></div><span class="rail-count">{{ upcoming|length }}</span></div>
+    <div class="rail-list">
+      {% for r in upcoming %}
+      <a class="rail-row" href="{% url 'dashboard:rentals' %}">
+        <span class="rail-check{% if r.payment and r.payment.status == 'paid' %} on{% endif %}" title="{% if r.payment and r.payment.status == 'paid' %}Paid{% else %}Payment pending{% endif %}">{% icon 'check' 14 %}</span>
+        <span class="grow"><b>{{ r.user.get_full_name|default:r.user.username }}</b><small>{{ r.reserved_for|date:"D H:i" }} · {{ r.pickup_kiosk }}{% if r.flight %} · {{ r.flight }}{% endif %}</small></span>
+      </a>
+      {% empty %}<div class="rail-empty">No pickups booked in the next 48 hours.</div>{% endfor %}
+    </div>
+
+    <div class="rail-head sm"><div><span>Chase today</span><b>Overdue kits</b></div><span class="rail-count{% if overdue %} hot{% endif %}">{{ overdue|length }}</span></div>
+    <div class="rail-list">
+      {% for r in overdue %}
+      <a class="rail-row" href="{% url 'dashboard:rentals' %}?tab=overdue">
+        <span class="rail-check late">{% icon 'clock' 14 %}</span>
+        <span class="grow"><b>{{ r.user.get_full_name|default:r.user.username }}</b><small>{{ r.code }} · due {{ r.due_at|naturaltime }} · {{ r.user.profile.phone|default:"no phone" }}</small></span>
+      </a>
+      {% empty %}<div class="rail-empty">Every kit is on time. 🎉</div>{% endfor %}
+    </div>
+
+    <div class="rail-promo">
+      <div class="rail-promo-art" aria-hidden="true">{% include "dashboard/hw/pouch.svg" %}{% include "dashboard/hw/case.svg" %}{% include "dashboard/hw/bracelet.svg" %}</div>
+      <b>{{ hw.kits_ready }} tourist kits ready</b>
+      <span>{{ hw.kits_with_case }} with a Talk Case · {{ hw.kits_reserved }} reserved</span>
+      <div class="rail-promo-ctas"><a class="btn btn-primary btn-sm" href="{% url 'dashboard:fleet' %}">Open fleet</a><a class="btn btn-ghost btn-sm" href="{% url 'dashboard:rentals' %}">Rentals</a></div>
+    </div>
+  </aside>
 </div>
 {% endblock %}
 {% block scripts %}
 <script>
 const D = {{ charts|safe }};
-const grid = { color: '#EFEFF3' };
+const grid = { color: 'rgba(110,104,136,.14)' };
 new Chart(cTrans, { type: 'line', data: { labels: D.labels, datasets: [
   { label: 'Translated', data: D.ok, borderColor: '#7C3AED', backgroundColor: 'rgba(124,58,237,.12)', fill: true, tension: .35, pointRadius: 0, borderWidth: 2.5 },
   { label: 'Errors / blocked', data: D.err, borderColor: '#FF6B00', borderDash: [5,4], pointRadius: 0, tension: .35, borderWidth: 2 } ]},
   options: { interaction: { mode: 'index', intersect: false }, scales: { x: { grid: { display: false }, ticks: { maxTicksLimit: 8 } }, y: { grid, beginAtZero: true } } } });
 new Chart(cFleet, { type: 'doughnut', data: { labels: D.fleet_labels, datasets: [{ data: D.fleet_values, backgroundColor: D.fleet_colors, borderWidth: 0 }] },
   options: { cutout: '68%', plugins: { legend: { position: 'bottom' } } } });
-new Chart(cRev, { type: 'bar', data: { labels: D.labels, datasets: [{ label: 'KES', data: D.rev, backgroundColor: '#7C3AED', borderRadius: 6, maxBarThickness: 16 }] },
+new Chart(cRev, { type: 'bar', data: { labels: D.labels, datasets: [{ label: 'KES', data: D.rev, backgroundColor: '#7C3AED', borderRadius: 8, maxBarThickness: 14 }] },
   options: { plugins: { legend: { display: false } }, scales: { x: { grid: { display: false }, ticks: { maxTicksLimit: 8 } }, y: { grid, ticks: { callback: kfmt } } } } });
-new Chart(cMix, { type: 'doughnut', data: { labels: D.mix_labels, datasets: [{ data: D.mix_values, backgroundColor: ['#7C3AED', '#FF6B00', '#3B82F6', '#22A55A'], borderWidth: 0 }] },
+new Chart(cMix, { type: 'doughnut', data: { labels: D.mix_labels, datasets: [{ data: D.mix_values, backgroundColor: ['#7C3AED', '#FF6B00', '#3B6FE0', '#1E9B53'], borderWidth: 0 }] },
   options: { cutout: '62%', plugins: { legend: { position: 'bottom' } } } });
 </script>
 {% endblock %}

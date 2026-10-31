@@ -1,0 +1,43 @@
+{% extends "contribute/base.html" %}{% load humanize %}
+{% block title %}Home{% endblock %}
+{% block content %}
+<div class="page-head"><div><h1>Karibu, {{ user.first_name|default:user.username }}</h1>
+  <p>You're teaching Vipi! to hear and understand Sheng. Everything you do is checked by someone else before it's used, so don't worry about the odd mistake.</p></div></div>
+
+<div class="grid g-4">
+  <div class="card kpi"><div class="muted">Your work</div><h2 style="font-size:32px;margin:6px 0 0">{{ me.done|intcomma }}</h2><div class="muted">{{ me.today }} today</div></div>
+  <div class="card kpi"><div class="muted">Approved by others</div><h2 style="font-size:32px;margin:6px 0 0">{% if me.rate is not None %}{{ me.rate }}%{% else %}—{% endif %}</h2><div class="muted">{{ me.approved }} of {{ me.checked }} checked</div></div>
+  <div class="card kpi"><div class="muted">Verified speech (everyone)</div><h2 style="font-size:32px;margin:6px 0 0">{{ clips.minutes|default:0|floatformat:0 }} min</h2><div class="muted">{{ clips.verified|intcomma }} clips · {{ clips.meanings|intcomma }} with meaning</div></div>
+  <div class="card kpi"><div class="muted">Verified words (everyone)</div><h2 style="font-size:32px;margin:6px 0 0">{{ words|intcomma }}</h2><div class="muted">Sheng dictionary</div></div>
+</div>
+
+<div class="grid g-3 mt">
+  {% for c in cards %}{% if c.by_source %}
+  <div class="card">
+    <h2><a href="{% url 'contribute:task' c.task %}?source=" style="color:inherit">{{ c.title }}</a> <span class="badge {% if c.waiting %}b-purple{% else %}b-grey{% endif %}">{{ c.waiting|intcomma }} waiting</span></h2>
+    <p class="muted" style="margin:0 0 10px">{{ c.about }}</p>
+    <div class="inline" style="gap:6px;flex-wrap:wrap">
+      {% for key, label, n in c.by_source %}<a class="btn btn-ghost btn-sm" href="{% url 'contribute:task' c.task %}?source={{ key }}">{{ label }} <span class="muted">{{ n|intcomma }}</span></a>{% endfor %}
+    </div>
+  </div>
+  {% else %}
+  <a class="card" href="{% url 'contribute:task' c.task %}" style="display:block;color:inherit">
+    <h2>{{ c.title }} <span class="badge {% if c.waiting %}b-purple{% else %}b-grey{% endif %}">{{ c.waiting|intcomma }} waiting</span></h2>
+    <p class="muted" style="margin:0">{{ c.about }}</p>
+  </a>
+  {% endif %}{% endfor %}
+</div>
+
+<div class="grid g-2-1 mt">
+  <div class="card"><h2>Your recent work</h2><div class="list">
+    {% for r in recent %}<div class="row"><div class="grow"><div class="title">{{ r.get_kind_display }}{% if r.verdict %} · {{ r.get_verdict_display|lower }}{% endif %}</div>
+      <div class="sub">{% if r.word %}{{ r.word.term }}{% elif r.data.text %}{{ r.data.text|truncatechars:80 }}{% elif r.data.en %}{{ r.data.en|truncatechars:80 }}{% elif r.data.unusable %}marked unusable{% endif %} · {{ r.created_at|naturaltime }}</div></div></div>
+    {% empty %}<div class="empty">Nothing yet. Pick a task above to start.</div>{% endfor %}
+  </div></div>
+  <div class="card"><h2>Please keep in mind</h2><div class="list">
+    <div class="row"><div class="grow sub">Clips are from radio shows and include callers' voices. Listen here only: don't record, download or share them.</div></div>
+    <div class="row"><div class="grow sub">Write what is actually said, in the language it's said in. Don't translate or tidy up when transcribing.</div></div>
+    <div class="row"><div class="grow sub">Not sure? Skip it. Someone else will pick it up.</div></div>
+  </div></div>
+</div>
+{% endblock %}

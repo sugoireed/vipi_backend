@@ -10,5 +10,6 @@ urlpatterns = [
     path("", RedirectView.as_view(url="/dashboard/", permanent=False)),
     path("admin/", admin.site.urls),
     path("api/v1/", include("config.api_urls")),
+    path("contribute/", include("apps.contribute.urls")),
     path("dashboard/", include("apps.dashboard.urls")),
 ]

@@ -1,0 +1,10 @@
+{% extends "dashboard/auth/base_auth.html" %}{% load vipi %}
+{% block title %}Request access{% endblock %}
+{% block content %}
+<div class="auth-head"><span class="eyebrow">Join the ops team</span><h1>Request access</h1><p>Create your account. An admin approves it before you can see the dashboard.</p></div>
+<form method="post" novalidate>{% csrf_token %}
+  {% include "dashboard/auth/_fields.html" %}
+  <button class="btn btn-primary btn-block">Create account {% icon 'arrow' 16 %}</button>
+</form>
+<p class="auth-switch">Already have an account? <a href="{% url 'dashboard:login' %}">Sign in</a></p>
+{% endblock %}

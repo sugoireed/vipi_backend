@@ -1,0 +1,90 @@
+{% load static vipi %}<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Contribute{% endblock %} · {{ market.brand }}</title>
+  <link rel="icon" href="{% static 'vipi/vipi_mark.svg' %}">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{% static 'vipi/dashboard.css' %}">
+  <style>
+    .field { width: 100%; box-sizing: border-box; font: 500 18px/1.5 var(--f-body); padding: 14px;
+      border: 0; border-radius: 16px; background: var(--mist); box-shadow: var(--press); color: var(--ink) }
+    .field:focus { outline: 2px solid var(--purple-light); border-color: var(--purple) }
+    label.lbl { display: block; font-weight: 700; margin: 14px 0 6px }
+    .quote { background: var(--sheet); border-radius: 14px; padding: 12px 14px; margin: 0 0 6px }
+    .choice { display: inline-flex; gap: 6px; align-items: center; padding: 8px 14px; border: 1px solid var(--line);
+      border-radius: 999px; cursor: pointer; font-weight: 600 }
+    .choice:has(input:checked) { background: var(--purple); border-color: var(--purple); color: #fff }
+    .choice input { display: none }
+    .actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 16px }
+    .field-tools { display: flex; justify-content: flex-end; margin-top: 6px }
+    .field-tools .btn[disabled] { opacity: .6; cursor: wait }
+    .suggest { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; margin-top: 8px; font-size: 13px }
+    .suggest .chip { all: unset; cursor: pointer; padding: 6px 12px; border-radius: 999px; background: var(--sheet);
+      border: 1px solid var(--line); max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap }
+    .suggest .chip:hover { border-color: var(--purple) }
+    .suggest .chip b { color: var(--purple); margin-right: 4px }
+  </style>
+</head>
+<body{% if user.is_authenticated %} class="app"{% endif %}>
+{% if user.is_authenticated %}
+  <input type="checkbox" id="nav-toggle" class="nav-toggle" aria-hidden="true" tabindex="-1">
+  <aside class="side" aria-label="Contribute">
+    <a class="side-brand" href="{% url 'contribute:home' %}"><img src="{% static 'vipi/vipi_mark.svg' %}" alt=""><span>pi<span class="bang">!</span></span><em class="brand-market">{{ market.qualifier }}</em><small>contribute</small></a>
+
+    <nav class="side-nav">
+      <span class="side-label">Start here</span>
+      <a href="{% url 'contribute:home' %}" class="{% if active == 'home' %}on{% endif %}"{% if active == 'home' %} aria-current="page"{% endif %}><i>{% icon 'home' 20 %}</i>Home</a>
+      <span class="side-label">Speech clips</span>
+      <a href="{% url 'contribute:task' 'transcribe' %}" class="{% if active == 'transcribe' %}on{% endif %}"{% if active == 'transcribe' %} aria-current="page"{% endif %}><i>{% icon 'pen' 20 %}</i>Transcribe</a>
+      <a href="{% url 'contribute:task' 'verify' %}" class="{% if active == 'verify' %}on{% endif %}"{% if active == 'verify' %} aria-current="page"{% endif %}><i>{% icon 'verify' 20 %}</i>Check transcripts</a>
+      <a href="{% url 'contribute:task' 'meaning' %}" class="{% if active == 'meaning' or active == 'verify_meaning' %}on{% endif %}"{% if active == 'meaning' or active == 'verify_meaning' %} aria-current="page"{% endif %}><i>{% icon 'chat' 20 %}</i>Meanings</a>
+      <span class="side-label">Sheng dictionary</span>
+      <a href="{% url 'contribute:task' 'words' %}" class="{% if active == 'words' or active == 'verify_words' %}on{% endif %}"{% if active == 'words' or active == 'verify_words' %} aria-current="page"{% endif %}><i>{% icon 'book' 20 %}</i>Words</a>
+      {% if user.is_staff %}
+      <span class="side-label">Team</span>
+      <a href="{% url 'contribute:people' %}" class="{% if active == 'people' %}on{% endif %}"{% if active == 'people' %} aria-current="page"{% endif %}><i>{% icon 'users' 20 %}</i>People</a>
+      <a href="{% url 'dashboard:overview' %}"><i>{% icon 'gear' 20 %}</i>Ops dashboard<em>↗</em></a>
+      {% endif %}
+      <a href="{% site_url %}"><i>{% icon 'arrow' 20 %}</i>Website<em>↗</em></a>
+    </nav>
+
+    <a class="side-promo" href="{% url 'contribute:task' 'transcribe' %}">
+      <span class="side-promo-art" aria-hidden="true">{% include "dashboard/hw/pouch.svg" %}{% include "dashboard/hw/bracelet.svg" %}</span>
+      <b>Teach Vipi! Sheng</b>
+      <span>Every clip you fix makes the Sauti engine hear Nairobi better →</span>
+    </a>
+
+    <div class="side-user">
+      <div class="avatar">{{ user|initials }}</div>
+      <div class="grow"><div class="name">{{ user.get_full_name|default:user.username }}</div><div class="role">{% if user.is_staff %}Staff{% else %}Contributor{% endif %}</div></div>
+      <form method="post" action="{% url 'contribute:logout' %}">{% csrf_token %}<button class="icon-btn" title="Sign out" aria-label="Sign out">{% icon 'logout' 18 %}</button></form>
+    </div>
+  </aside>
+  <label for="nav-toggle" class="side-scrim" aria-hidden="true"></label>
+
+  <div class="main">
+    <header class="topbar">
+      <label for="nav-toggle" class="icon-btn menu-btn" aria-label="Open menu">{% icon 'menu' 20 %}</label>
+      <div class="topbar-title">
+        <span class="crumb">{{ market.brand }} contribute · {% now "l j F" %}</span>
+        <b>Habari, {{ user.first_name|default:user.username }} 👋</b>
+      </div>
+      <a class="btn btn-primary" href="{% url 'contribute:task' 'transcribe' %}">Start a clip {% icon 'arrow' 16 %}</a>
+      <div class="avatar" title="{{ user.get_full_name|default:user.username }}">{{ user|initials }}</div>
+    </header>
+{% else %}
+  <header class="top">
+    <a class="brand" href="{% url 'contribute:home' %}"><img src="{% static 'vipi/vipi_mark.svg' %}" alt=""><span>pi<span class="bang">!</span></span><small>contribute</small></a>
+  </header>
+{% endif %}
+    <main class="sheet">
+      {% if messages %}<div class="msgs">{% for m in messages %}<div class="msg {{ m.tags }}">{{ m }}</div>{% endfor %}</div>{% endif %}
+      {% block content %}{% endblock %}
+    </main>
+{% if user.is_authenticated %}  </div>{% endif %}
+  {% block scripts %}{% endblock %}
+</body>
+</html>

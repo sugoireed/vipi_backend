@@ -2,38 +2,72 @@
 <html lang="en">
 <head>
   <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>{% block title %}Dashboard{% endblock %} · Vipi! ops</title>
+  <title>{% block title %}Dashboard{% endblock %} · {{ market.brand }} ops</title>
   <link rel="icon" href="{% static 'vipi/vipi_mark.svg' %}">
   <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="{% static 'vipi/dashboard.css' %}">
 </head>
-<body>
-  <header class="top">
-    <a class="brand" href="{% url 'dashboard:overview' %}"><img src="{% static 'vipi/vipi_mark.svg' %}" alt=""><span>pi<span class="bang">!</span></span><small>ops</small></a>
-    <nav class="nav">
-      <a href="{% url 'dashboard:overview' %}" class="{% if active == 'overview' %}on{% endif %}">Overview</a>
-      <a href="{% url 'dashboard:rentals' %}" class="{% if active == 'rentals' %}on{% endif %}">Rentals{% if nav_overdue %}<span class="dot">{{ nav_overdue }}</span>{% endif %}</a>
-      <a href="{% url 'dashboard:fleet' %}" class="{% if active == 'fleet' %}on{% endif %}">Fleet</a>
-      <a href="{% url 'dashboard:payments' %}" class="{% if active == 'payments' %}on{% endif %}">Payments</a>
-      <a href="{% url 'dashboard:usage' %}" class="{% if active == 'usage' %}on{% endif %}">Translation</a>
-      <a href="{% url 'dashboard:customers' %}" class="{% if active == 'customers' %}on{% endif %}">Customers</a>
-      <a href="{% url 'admin:index' %}">Admin ↗</a>
+<body class="app">
+  <input type="checkbox" id="nav-toggle" class="nav-toggle" aria-hidden="true" tabindex="-1">
+  <aside class="side" aria-label="Dashboard">
+    <a class="side-brand" href="{% url 'dashboard:overview' %}"><img src="{% static 'vipi/vipi_mark.svg' %}" alt=""><span>pi<span class="bang">!</span></span><em class="brand-market">{{ market.qualifier }}</em><small>ops</small></a>
+
+    <nav class="side-nav">
+      <span class="side-label">Run the day</span>
+      <a href="{% url 'dashboard:overview' %}" class="{% if active == 'overview' %}on{% endif %}"{% if active == 'overview' %} aria-current="page"{% endif %}><i>{% icon 'home' 20 %}</i>Overview</a>
+      <a href="{% url 'dashboard:rentals' %}" class="{% if active == 'rentals' %}on{% endif %}"{% if active == 'rentals' %} aria-current="page"{% endif %}><i>{% icon 'swap' 20 %}</i>Rentals{% if nav_overdue %}<span class="count" title="{{ nav_overdue }} overdue">{{ nav_overdue }}</span>{% endif %}</a>
+      <a href="{% url 'dashboard:fleet' %}" class="{% if active == 'fleet' %}on{% endif %}"{% if active == 'fleet' %} aria-current="page"{% endif %}><i>{% icon 'case' 20 %}</i>Fleet</a>
+      <span class="side-label">Money &amp; people</span>
+      <a href="{% url 'dashboard:payments' %}" class="{% if active == 'payments' %}on{% endif %}"{% if active == 'payments' %} aria-current="page"{% endif %}><i>{% icon 'cash' 20 %}</i>Payments</a>
+      <a href="{% url 'dashboard:customers' %}" class="{% if active == 'customers' %}on{% endif %}"{% if active == 'customers' %} aria-current="page"{% endif %}><i>{% icon 'users' 20 %}</i>Customers</a>
+      <a href="{% url 'dashboard:usage' %}" class="{% if active == 'usage' %}on{% endif %}"{% if active == 'usage' %} aria-current="page"{% endif %}><i>{% icon 'wave' 20 %}</i>Translation</a>
+      <span class="side-label">More</span>
+      <a href="{% url 'contribute:home' %}"><i>{% icon 'mic' 20 %}</i>Contribute<em>↗</em></a>
+      <a href="{% url 'admin:index' %}"><i>{% icon 'gear' 20 %}</i>Admin<em>↗</em></a>
+      <a href="{% site_url %}"><i>{% icon 'arrow' 20 %}</i>Website<em>↗</em></a>
     </nav>
-    <div class="spacer"></div>
-    <div class="who"><div><div style="color:#fff;font-weight:700">{{ request.user.get_full_name|default:request.user.username }}</div>
-      <form method="post" action="{% url 'admin:logout' %}" style="margin:0">{% csrf_token %}<button style="all:unset;cursor:pointer;color:rgba(255,255,255,.55);font-size:12px">Sign out</button></form></div>
-      <div class="avatar">{{ request.user|initials }}</div></div>
-  </header>
-  <main class="sheet">
-    {% if messages %}<div class="msgs">{% for m in messages %}<div class="msg {{ m.tags }}">{{ m }}</div>{% endfor %}</div>{% endif %}
-    {% block content %}{% endblock %}
-  </main>
+
+    <a class="side-promo" href="{% url 'dashboard:fleet' %}">
+      <span class="side-promo-art" aria-hidden="true">{% include "dashboard/hw/pouch.svg" %}{% include "dashboard/hw/bracelet.svg" %}</span>
+      <b>{{ nav_kits_ready }} kit{{ nav_kits_ready|pluralize }} ready</b>
+      <span>Pods, Talk Case, pouch and a Kenyan bracelet. Open the fleet →</span>
+    </a>
+
+    <div class="side-user">
+      <div class="avatar">{{ request.user|initials }}</div>
+      <div class="grow"><div class="name">{{ request.user.get_full_name|default:request.user.username }}</div><div class="role">{% if request.user.is_superuser %}Admin{% else %}Ops staff{% endif %}</div></div>
+      <form method="post" action="{% url 'dashboard:logout' %}">{% csrf_token %}<button class="icon-btn" title="Sign out" aria-label="Sign out">{% icon 'logout' 18 %}</button></form>
+    </div>
+  </aside>
+  <label for="nav-toggle" class="side-scrim" aria-hidden="true"></label>
+
+  <div class="main">
+    <header class="topbar">
+      <label for="nav-toggle" class="icon-btn menu-btn" aria-label="Open menu">{% icon 'menu' 20 %}</label>
+      <div class="topbar-title">
+        <span class="crumb">{{ market.brand }} ops · {{ now|date:"l j F" }}</span>
+        <b>{% block heading %}Habari, {{ request.user.first_name|default:request.user.username }} 👋{% endblock %}</b>
+      </div>
+      <form class="search" method="get" action="{% url 'dashboard:customers' %}" role="search">
+        {% icon 'search' 18 %}<input name="q" placeholder="Search customers by name, email or phone" aria-label="Search customers" value="{{ q|default:'' }}">
+      </form>
+      <a class="icon-btn bell" href="{% url 'dashboard:rentals' %}?tab=overdue" title="Overdue rentals" aria-label="{{ nav_overdue }} overdue rentals">{% icon 'bell' 20 %}{% if nav_overdue %}<span class="dot">{{ nav_overdue }}</span>{% endif %}</a>
+      <div class="avatar" title="{{ request.user.get_full_name|default:request.user.username }}">{{ request.user|initials }}</div>
+    </header>
+    <main class="sheet">
+      {% if messages %}<div class="msgs">{% for m in messages %}<div class="msg {{ m.tags }}">{{ m }}</div>{% endfor %}</div>{% endif %}
+      {% block content %}{% endblock %}
+    </main>
+  </div>
+
   <script src="{% static 'vipi/chart.umd.min.js' %}"></script>
   <script>
     if (window.Chart) {
-      Chart.defaults.font.family = 'Inter, system-ui, sans-serif';
-      Chart.defaults.color = '#7A7A85';
+      Chart.defaults.font.family = '"DM Sans", system-ui, sans-serif';
+      Chart.defaults.color = '#6E6888';
+      Chart.defaults.borderColor = 'rgba(110,104,136,.14)';
       Chart.defaults.plugins.legend.labels.usePointStyle = true;
       Chart.defaults.plugins.legend.labels.boxWidth = 8;
       Chart.defaults.maintainAspectRatio = false;

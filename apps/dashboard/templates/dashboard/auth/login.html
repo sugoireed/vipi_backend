@@ -1,0 +1,12 @@
+{% extends "dashboard/auth/base_auth.html" %}{% load vipi %}
+{% block title %}Sign in{% endblock %}
+{% block content %}
+<div class="auth-head"><span class="eyebrow">Ops dashboard</span><h1>Welcome back</h1><p>Sign in with your work email.</p></div>
+<form method="post" novalidate>{% csrf_token %}
+  {% include "dashboard/auth/_fields.html" %}
+  <div class="auth-row"><span></span><a href="{% url 'dashboard:password_reset' %}">Forgot password?</a></div>
+  <input type="hidden" name="next" value="{{ next }}">
+  <button class="btn btn-primary btn-block">Sign in {% icon 'arrow' 16 %}</button>
+</form>
+<p class="auth-switch">New to the team? <a href="{% url 'dashboard:signup' %}">Request access</a></p>
+{% endblock %}

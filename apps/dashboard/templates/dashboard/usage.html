@@ -22,7 +22,7 @@
 {% endblock %}
 {% block scripts %}
 <script>
-const D = {{ charts|safe }}; const grid = { color: '#EFEFF3' };
+const D = {{ charts|safe }}; const grid = { color: 'rgba(110,104,136,.14)' };
 new Chart(cDir, { type: 'bar', data: { labels: D.labels, datasets: [
   { label: 'Swahili/Sheng → English', data: D.to_en, backgroundColor: '#7C3AED', borderRadius: 4, stack: 's' },
   { label: 'English → Swahili', data: D.to_sw, backgroundColor: '#FF6B00', borderRadius: 4, stack: 's' } ]},

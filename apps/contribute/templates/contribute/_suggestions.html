@@ -1,0 +1,5 @@
+{% if options %}<div class="suggest">
+  <span class="muted">Machine drafts, check them against what you hear:</span>
+  {% for o in options %}<button type="button" class="chip" data-target="{{ target }}" data-text="{{ o.text }}" title="Use this draft">
+    <b>{{ o.by|capfirst }}</b> {{ o.text|truncatechars:90 }}</button>{% endfor %}
+</div>{% endif %}

@@ -1,3 +1,4 @@
+from django.conf import settings
 from django.contrib.auth import authenticate, get_user_model
 from django.contrib.auth.password_validation import validate_password
 from rest_framework import permissions, serializers, status
@@ -22,9 +23,11 @@ def me_payload(user):
         "organisation": user.profile.organisation.name if user.profile.organisation else None,
         "active_pass": None if not p else {
             "plan": p.plan.name if p.plan else p.get_source_display(),
+            "starts_at": p.starts_at,
             "ends_at": p.ends_at,
         },
         "free_translations_left_today": None if p else a.free_remaining,
+        "free_daily_limit": settings.FREE_DAILY_TRANSLATIONS,
     }
 
 

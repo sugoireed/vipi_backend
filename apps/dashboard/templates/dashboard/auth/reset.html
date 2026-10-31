@@ -1,0 +1,10 @@
+{% extends "dashboard/auth/base_auth.html" %}{% load vipi %}
+{% block title %}Reset password{% endblock %}
+{% block content %}
+<div class="auth-head"><span class="eyebrow">Forgot password</span><h1>Reset your password</h1><p>Enter your work email and we'll send you a link to set a new one.</p></div>
+<form method="post" novalidate>{% csrf_token %}
+  {% include "dashboard/auth/_fields.html" %}
+  <button class="btn btn-primary btn-block">Send reset link {% icon 'arrow' 16 %}</button>
+</form>
+<p class="auth-switch">Remembered it? <a href="{% url 'dashboard:login' %}">Back to sign in</a></p>
+{% endblock %}

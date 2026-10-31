@@ -1,0 +1,13 @@
+# Vipi engine (separate process from Django; heavier dependencies for the local models)
+fastapi
+uvicorn[standard]
+python-multipart
+httpx
+ctranslate2
+sentencepiece
+# Riba (speech recognition)
+torch
+transformers
+peft
+soundfile
+numpy

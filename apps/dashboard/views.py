@@ -4,7 +4,6 @@ import statistics
 from datetime import timedelta
 
 from django.contrib import messages
-from django.contrib.admin.views.decorators import staff_member_required
 from django.contrib.auth import get_user_model
 from django.core.paginator import Paginator
 from django.db.models import Count, IntegerField, OuterRef, Q, Subquery, Sum, Value
@@ -19,6 +18,8 @@ from apps.billing.models import Pass, Payment, Plan
 from apps.esim.models import EsimOrder
 from apps.fleet.models import Device, DeviceEvent, Kiosk, Rental
 from apps.translate.models import TranslationLog
+
+from .access import staff_required
 
 User = get_user_model()
 
@@ -53,10 +54,34 @@ def _pct(values, p):
 
 def _ctx(request, active, **kw):
     overdue = Rental.objects.filter(status=Rental.Status.ACTIVE, due_at__lt=timezone.now()).count()
-    return {"active": active, "nav_overdue": overdue, "now": timezone.now(), **kw}
+    kits_ready = Device.objects.filter(kind=Device.Kind.POD_PAIR, status=Device.Status.AVAILABLE).count()
+    return {"active": active, "nav_overdue": overdue, "nav_kits_ready": kits_ready, "now": timezone.now(), **kw}
 
 
-@staff_member_required
+def _ring(pct, label=None, title=""):
+    """A KPI progress ring: pct 0-100 drawn on a circle of r=18 (circumference 113.1). `title` explains it on hover."""
+    pct = max(0, min(100, round(pct)))
+    return {"pct": pct, "dash": round(pct * 1.131, 1), "label": label or f"{pct}%", "title": title}
+
+
+def _hardware(now=None):
+    """Device counts per kind and status, and what that means for whole tourist kits."""
+    now = now or timezone.now()
+    by_kind = {k: {} for k in Device.Kind.values}
+    for kind, st, n in Device.objects.order_by().values_list("kind", "status").annotate(n=Count("id")):
+        by_kind.setdefault(kind, {})[st] = n
+    pods, cases = by_kind[Device.Kind.POD_PAIR], by_kind[Device.Kind.TALK_CASE]
+    return {
+        "pods": pods, "cases": cases,
+        "kits_ready": pods.get("available", 0),  # a kit needs pods; the Talk Case is added when one is free
+        "kits_with_case": min(pods.get("available", 0), cases.get("available", 0)),
+        "kits_out": Rental.objects.filter(status=Rental.Status.ACTIVE).count(),
+        "kits_reserved": Rental.objects.filter(status=Rental.Status.RESERVED).count(),
+        "kits_overdue": Rental.objects.filter(status=Rental.Status.ACTIVE, due_at__lt=now).count(),
+    }
+
+
+@staff_required
 def overview(request):
     now = timezone.now()
     d30 = now - timedelta(days=30)
@@ -82,6 +107,11 @@ def overview(request):
     in_service = fleet_total - fleet.get("retired", 0) - fleet.get("lost", 0)
     utilisation = round(100 * out / in_service) if in_service else 0
     overdue = Rental.objects.filter(status=Rental.Status.ACTIVE, due_at__lt=now).select_related("user", "pickup_kiosk")
+    active_rentals = Rental.objects.filter(status=Rental.Status.ACTIVE).count()
+    on_time = round(100 * (active_rentals - overdue.count()) / active_rentals) if active_rentals else 100
+    under_2s = round(100 * sum(1 for v in lat if v < 2000) / len(lat)) if lat else 0
+    customers = User.objects.filter(is_staff=False).count()
+    rev_pct = round(100 * (revenue_30 - revenue_prev) / revenue_prev) if revenue_prev else None
     upcoming = (Rental.objects.filter(status=Rental.Status.RESERVED, reserved_for__lte=now + timedelta(hours=48))
                 .select_related("user", "pickup_kiosk", "payment").order_by("reserved_for")[:8])
 
@@ -101,13 +131,20 @@ def overview(request):
     return render(request, "dashboard/overview.html", _ctx(
         request, "overview",
         kpis=[
-            {"label": "Revenue · 30 days", "value": f"KES {revenue_30:,}", "sub": _delta(revenue_30, revenue_prev), "tone": "purple", "icon": "cash"},
-            {"label": "Active passes", "value": f"{active_passes:,}", "sub": "app + kit + business", "tone": "orange", "icon": "ticket"},
-            {"label": "Translations today", "value": f"{trans_today:,}", "sub": f"{trans_30:,} in 30 days", "tone": "blue", "icon": "wave"},
-            {"label": "Latency p50 / p95", "value": f"{p50/1000:.2f}s", "sub": f"p95 {p95/1000:.2f}s · {error_rate}% errors (7d)", "tone": "green" if p50 and p50 < 2000 else "orange", "icon": "bolt"},
-            {"label": "Kits out now", "value": f"{out}", "sub": f"{utilisation}% fleet utilisation", "tone": "orange", "icon": "pods"},
-            {"label": "Overdue rentals", "value": f"{overdue.count()}", "sub": "follow up today" if overdue else "all on time", "tone": "red" if overdue else "green", "icon": "clock"},
+            {"label": "Revenue · 30 days", "value": f"KES {revenue_30:,}", "sub": _delta(revenue_30, revenue_prev), "tone": "purple", "icon": "cash",
+             "ring": _ring(abs(rev_pct) if rev_pct is not None else 100, (f"{'+' if rev_pct >= 0 else '−'}{abs(rev_pct)}%" if rev_pct is not None else "new"), "Change vs the previous 30 days")},
+            {"label": "Active passes", "value": f"{active_passes:,}", "sub": f"of {customers:,} travellers · app + kit + business", "tone": "orange", "icon": "ticket",
+             "ring": _ring(100 * active_passes / customers if customers else 0, title="Share of travellers with an active pass")},
+            {"label": "Translations today", "value": f"{trans_today:,}", "sub": f"{trans_30:,} in 30 days", "tone": "blue", "icon": "wave",
+             "ring": _ring(100 * trans_today / (trans_30 / 30) if trans_30 else 0, title="Today so far, as a share of the 30-day daily average")},
+            {"label": "Latency p50 / p95", "value": f"{p50/1000:.2f}s", "sub": f"p95 {p95/1000:.2f}s · {error_rate}% errors (7d)", "tone": "green" if p50 and p50 < 2000 else "orange", "icon": "bolt",
+             "ring": _ring(under_2s, title="Translations under 2 s (7 days)")},
+            {"label": "Kits out now", "value": f"{out}", "sub": f"{utilisation}% fleet utilisation", "tone": "orange", "icon": "pods",
+             "ring": _ring(utilisation, title="Devices in service that are rented out")},
+            {"label": "Overdue rentals", "value": f"{overdue.count()}", "sub": f"{on_time}% of kits out are on time", "tone": "red" if overdue else "green", "icon": "clock",
+             "ring": _ring(on_time, title="Kits out that are not overdue")},
         ],
+        hw=_hardware(now), utilisation=utilisation, gauge_dash=round(utilisation * 2.513, 1), in_service=in_service, out=out,
         charts=json.dumps(charts),
         overdue=overdue[:6],
         upcoming=upcoming,
@@ -122,7 +159,7 @@ def _delta(now_v, prev_v):
     return f"{'▲' if pct >= 0 else '▼'} {abs(pct)}% vs previous 30 days"
 
 
-@staff_member_required
+@staff_required
 def fleet(request):
     kiosks = Kiosk.objects.filter(active=True).annotate(
         available=Count("devices", filter=Q(devices__status=Device.Status.AVAILABLE), distinct=True),
@@ -143,18 +180,19 @@ def fleet(request):
     if q:
         devices = devices.filter(Q(serial__icontains=q) | Q(notes__icontains=q))
     counts = dict(Device.objects.values_list("status").annotate(n=Count("id")))
+    hardware = _hardware()
     page = Paginator(devices, 40).get_page(request.GET.get("page"))
     qs_no_page = request.GET.copy()
     qs_no_page.pop("page", None)
     return render(request, "dashboard/fleet.html", _ctx(
-        request, "fleet", kiosks=kiosks, devices=page, page=page, qs=qs_no_page.urlencode(),
+        request, "fleet", kiosks=kiosks, devices=page, page=page, qs=qs_no_page.urlencode(), hw=hardware,
         status_choices=[(k, v, counts.get(k, 0), STATUS_COLORS[k]) for k, v in Device.Status.choices],
         kind_choices=Device.Kind.choices, f=dict(status=f_status, kind=f_kind, kiosk=f_kiosk, q=q),
         all_kiosks=Kiosk.objects.filter(active=True),
     ))
 
 
-@staff_member_required
+@staff_required
 @require_POST
 def device_action(request, serial):
     d = get_object_or_404(Device, serial=serial)
@@ -176,7 +214,7 @@ def device_action(request, serial):
     return redirect(request.META.get("HTTP_REFERER") or "dashboard:fleet")
 
 
-@staff_member_required
+@staff_required
 def rentals(request):
     tab = request.GET.get("tab", "today")
     now = timezone.now()
@@ -194,7 +232,7 @@ def rentals(request):
     ))
 
 
-@staff_member_required
+@staff_required
 @require_POST
 def rental_action(request, code):
     r = get_object_or_404(Rental, code=code)
@@ -233,7 +271,7 @@ def rental_action(request, code):
     return redirect(request.META.get("HTTP_REFERER") or "dashboard:rentals")
 
 
-@staff_member_required
+@staff_required
 def payments(request):
     qs = Payment.objects.select_related("user", "plan")
     st, method, q = (request.GET.get(k, "") for k in ("status", "method", "q"))
@@ -256,7 +294,7 @@ def payments(request):
     ))
 
 
-@staff_member_required
+@staff_required
 @require_POST
 def payment_action(request, reference):
     p = get_object_or_404(Payment, reference=reference)
@@ -266,7 +304,7 @@ def payment_action(request, reference):
     return redirect(request.META.get("HTTP_REFERER") or "dashboard:payments")
 
 
-@staff_member_required
+@staff_required
 def usage(request):
     tl = TranslationLog.objects.all()
     d30 = timezone.now() - timedelta(days=30)
@@ -300,7 +338,7 @@ def usage(request):
     ))
 
 
-@staff_member_required
+@staff_required
 def customers(request):
     q = request.GET.get("q", "")
     now = timezone.now()

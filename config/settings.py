@@ -3,6 +3,11 @@ import os
 from pathlib import Path
 
 import dj_database_url
+import pymysql
+
+# PyMySQL stands in for mysqlclient (no C build needed); Django checks the mysqlclient version, so report one it accepts.
+pymysql.version_info = (2, 2, 1, "final", 0)
+pymysql.install_as_MySQLdb()
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -46,6 +51,7 @@ INSTALLED_APPS = [
     "apps.fleet",
     "apps.translate",
     "apps.esim",
+    "apps.contribute",
     "apps.dashboard",
 ]
 
@@ -72,6 +78,7 @@ TEMPLATES = [
                 "django.template.context_processors.request",
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
+                "apps.dashboard.context.market",
             ],
         },
     },
@@ -84,6 +91,10 @@ DATABASES = {
         default=f"sqlite:///{BASE_DIR / 'db.sqlite3'}", conn_max_age=600
     )
 }
+if DATABASES["default"].get("ENGINE") == "django.db.backends.mysql":
+    DATABASES["default"].setdefault("OPTIONS", {}).update(
+        {"charset": "utf8mb4", "init_command": "SET sql_mode='STRICT_TRANS_TABLES'"}
+    )
 
 AUTH_PASSWORD_VALIDATORS = [
     {"NAME": "django.contrib.auth.password_validation.MinimumLengthValidator", "OPTIONS": {"min_length": 8}},
@@ -106,6 +117,30 @@ STORAGES = {
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 LOGIN_URL = "/admin/login/"
 
+# Password-reset emails from the dashboard. Without SMTP settings, DEBUG prints them to the console.
+EMAIL_BACKEND = os.environ.get("EMAIL_BACKEND") or (
+    "django.core.mail.backends.console.EmailBackend" if DEBUG else "django.core.mail.backends.smtp.EmailBackend")
+EMAIL_HOST = os.environ.get("EMAIL_HOST", "localhost")
+EMAIL_PORT = int(os.environ.get("EMAIL_PORT", "587"))
+EMAIL_HOST_USER = os.environ.get("EMAIL_HOST_USER", "")
+EMAIL_HOST_PASSWORD = os.environ.get("EMAIL_HOST_PASSWORD", "")
+EMAIL_USE_TLS = env_bool("EMAIL_USE_TLS", True)
+# Which country this deployment serves. The brand is VipiAfrica everywhere ("AFRICA" beside the
+# logo); each country has its own domain: vipikenya.com now, Uganda / Tanzania later. VIPI_MARKET=ke|ug|tz.
+# vipiafrica.com is reserved for the pan-African hub. Uganda/Tanzania domains are placeholders.
+_BRAND = {"brand": "VipiAfrica", "qualifier": "Africa"}
+MARKETS = {
+    "ke": {**_BRAND, "code": "ke", "country": "Kenya", "domain": "vipikenya.com", "city": "Nairobi"},
+    "ug": {**_BRAND, "code": "ug", "country": "Uganda", "domain": "vipiuganda.com", "city": "Kampala"},
+    "tz": {**_BRAND, "code": "tz", "country": "Tanzania", "domain": "vipitanzania.com", "city": "Dar es Salaam"},
+}
+MARKET = MARKETS.get(os.environ.get("VIPI_MARKET", "ke").lower(), MARKETS["ke"])
+
+DEFAULT_FROM_EMAIL = os.environ.get("DEFAULT_FROM_EMAIL", f"{MARKET['brand']} ops <ops@{MARKET['domain']}>")
+
+# The public marketing site (vipi_site). The dashboard and sign-in pages link back to it.
+SITE_URL = os.environ.get("SITE_URL", f"https://{MARKET['domain']}").rstrip("/")
+
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": [
         "rest_framework.authentication.TokenAuthentication",
@@ -123,8 +158,14 @@ FILE_UPLOAD_MAX_MEMORY_SIZE = 12 * 1024 * 1024
 # --- Vipi! platform settings -------------------------------------------------
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
 GEMINI_MODEL = os.environ.get("GEMINI_MODEL", "gemini-3.8-flash")
+# Vipi engine (engine/ in this repo): Riba + Mufti/Risto. Empty URL = Gemini only.
+VIPI_ENGINE_URL = os.environ.get("VIPI_ENGINE_URL", "")
+VIPI_ENGINE_KEY = os.environ.get("VIPI_ENGINE_KEY", "")
+VIPI_ENGINE_TIMEOUT = float(os.environ.get("VIPI_ENGINE_TIMEOUT", "25"))
 FREE_DAILY_TRANSLATIONS = int(os.environ.get("FREE_DAILY_TRANSLATIONS", "10"))
 MAX_CLIP_SECONDS = int(os.environ.get("MAX_CLIP_SECONDS", "30"))
+# Talk clips for /contribute/ (transcripts + meanings), cut by sheng_dataset/scrapers/sheng_radio_talk.py
+TRANSCRIPT_CLIPS_ROOT = os.environ.get("TRANSCRIPT_CLIPS_ROOT") or str(BASE_DIR.parent / "sheng_dataset" / "raw" / "radio")
 USD_TO_KES = float(os.environ.get("USD_TO_KES", "129"))
 
 MPESA = {
